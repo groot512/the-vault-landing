@@ -5,6 +5,7 @@
   --accent: #b58a3d;
   --hairline: rgb(242 238 227 / 24%);
   --page-gutter: clamp(1.25rem, 4vw, 4.75rem);
+  --nav-height: 4.5rem;
   --parallax-x: 0px;
   --parallax-y: 0px;
   --hero-scroll-y: 0px;
@@ -37,7 +38,7 @@ a {
 
 .skip-link {
   position: fixed;
-  z-index: 20;
+  z-index: 100;
   top: 0;
   left: 0;
   padding: 0.75rem 1rem;
@@ -122,14 +123,14 @@ a {
   min-height: 100vh;
   min-height: 100svh;
   padding:
-    max(1.5rem, env(safe-area-inset-top))
+    calc(var(--nav-height) + max(1.5rem, env(safe-area-inset-top)))
     var(--page-gutter)
     max(1.5rem, env(safe-area-inset-bottom));
 }
 
 .hero__frame::before {
   position: absolute;
-  top: clamp(4.75rem, 9vh, 7.5rem);
+  top: calc(var(--nav-height) + clamp(4.75rem, 9vh, 7.5rem));
   right: var(--page-gutter);
   left: var(--page-gutter);
   height: 1px;
@@ -141,35 +142,6 @@ a {
 
 .hero__masthead {
   display: contents;
-}
-
-.hero__logo {
-  grid-column: 1 / span 3;
-  align-self: start;
-  width: max-content;
-  text-decoration: none;
-  opacity: 1;
-}
-
-.hero__logo-the,
-.hero__logo-vault {
-  display: block;
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 400;
-  line-height: 0.86;
-}
-
-.hero__logo-the {
-  margin-left: 0.15em;
-  color: var(--accent);
-  font-size: 0.62rem;
-  letter-spacing: 0.44em;
-}
-
-.hero__logo-vault {
-  margin-top: 0.22rem;
-  font-size: clamp(1.35rem, 2.1vw, 2.25rem);
-  letter-spacing: 0.04em;
 }
 
 .hero__edition {
@@ -288,7 +260,6 @@ a {
 }
 
 .js .hero__frame::before,
-.js .hero__logo,
 .js .hero__eyebrow,
 .js .hero__edition,
 .js .hero__statement,
@@ -300,7 +271,6 @@ a {
   opacity: 1;
 }
 
-.js .hero__logo,
 .js .hero__edition {
   transform: translate3d(0, -1rem, 0);
 }
@@ -332,7 +302,6 @@ a {
   animation: heroFocusBlur 600ms var(--editorial-ease) both;
 }
 
-.js .is-ready .hero__logo,
 .js .is-ready .hero__edition {
   animation: elementEnter 700ms var(--editorial-ease) 400ms both;
 }
@@ -401,6 +370,7 @@ a {
 @media (max-width: 46rem) {
   :root {
     --page-gutter: max(1.25rem, env(safe-area-inset-left));
+    --nav-height: 4rem;
   }
 
   .hero {
@@ -424,10 +394,6 @@ a {
   .hero__frame::before {
     right: max(1.25rem, env(safe-area-inset-right));
     left: max(1.25rem, env(safe-area-inset-left));
-  }
-
-  .hero__logo {
-    grid-column: 1 / span 2;
   }
 
   .hero__edition {
@@ -524,7 +490,6 @@ a {
 
   .hero__visual,
   .hero__image--sharp,
-  .hero__logo,
   .hero__edition,
   .hero__eyebrow,
   .hero__statement,

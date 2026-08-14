@@ -16,23 +16,23 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="app.css?v=260814-1">
-    <script src="app.js?v=260814-1" defer></script>
+    <link rel="stylesheet" href="app.css?v=260815-1">
+    <link rel="stylesheet" href="../navigation.css?v=260815-1">
+    <script src="app.js?v=260815-2" defer></script>
+    <script src="../navigation.js?v=260815-1" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#workspace">작업영역으로 건너뛰기</a>
 
-    <header class="lab-header">
-      <a class="lab-header__brand" href="../">
-        <span>THE VAULT</span>
-        <strong>TRUST LAB</strong>
-      </a>
-      <div class="lab-header__session">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span>Local session</span>
-        <strong data-device-id>DEVICE / PREPARING</strong>
-      </div>
-      <a class="lab-header__exit" href="../tessera/">Exit demo ↗</a>
+    <header class="global-nav" data-global-nav>
+      <a class="global-nav__brand" href="../"><strong>THE VAULT</strong><span>/</span><strong>TRUST LAB</strong></a>
+      <button class="global-nav__toggle" type="button" aria-expanded="false" aria-controls="global-menu" data-global-nav-toggle><span class="global-nav__toggle-open">Menu</span><span class="global-nav__toggle-close">Close</span></button>
+      <nav class="global-nav__menu" id="global-menu" aria-label="THE VAULT 전체 메뉴">
+        <div class="global-nav__item"><a class="global-nav__link" href="../#philosophy">Philosophy</a></div><div class="global-nav__item"><a class="global-nav__link" href="../#vision">Vision</a></div><div class="global-nav__item"><a class="global-nav__link" href="../#approach">Approach</a></div>
+        <div class="global-nav__item"><a class="global-nav__trigger" href="../tessera/">Tessera ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-tessera" data-submenu-toggle><span class="sr-only">Tessera 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-tessera"><a href="../tessera/"><span>00</span>Overview</a><a href="../tessera/#proof"><span>01</span>Proof</a><a href="../tessera/#architecture"><span>02</span>Architecture</a><a href="../tessera/#status"><span>03</span>Status</a></div></div>
+        <div class="global-nav__item"><a class="global-nav__trigger" href="../digital-vault/">Digital Vault ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-digital" data-submenu-toggle><span class="sr-only">Digital Vault 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-digital"><a href="../digital-vault/"><span>00</span>Overview</a><a href="../digital-vault/#proof"><span>01</span>Proof</a><a href="../digital-vault/#architecture"><span>02</span>Architecture</a><a href="../digital-vault/#status"><span>03</span>Status</a></div></div>
+        <div class="global-nav__item is-current"><a class="global-nav__trigger" href="./">Trust Lab ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-lab" data-submenu-toggle><span class="sr-only">Trust Lab 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-lab"><a href="#signal"><span>01</span>Tessera Proof</a><a href="#archive"><span>02</span>Vault Proof</a><a href="#audit"><span>03</span>Audit</a></div></div>
+      </nav>
     </header>
 
     <main class="lab-shell" id="workspace">
@@ -76,7 +76,7 @@
           </dl>
         </header>
 
-        <section class="lab-view is-active" data-view="signal" aria-labelledby="signal-title">
+        <section class="lab-view is-active" id="signal" data-view="signal" aria-labelledby="signal-title">
           <div class="view-main">
             <header class="view-title">
               <p>01 / Secure Signal</p>
@@ -123,7 +123,7 @@
           </aside>
         </section>
 
-        <section class="lab-view" data-view="archive" aria-labelledby="archive-title" hidden>
+        <section class="lab-view" id="archive" data-view="archive" aria-labelledby="archive-title" hidden>
           <div class="view-main">
             <header class="view-title">
               <p>02 / Secure Archive</p>
@@ -159,7 +159,7 @@
           </aside>
         </section>
 
-        <section class="lab-view" data-view="audit" aria-labelledby="audit-title" hidden>
+        <section class="lab-view" id="audit" data-view="audit" aria-labelledby="audit-title" hidden>
           <div class="view-main view-main--audit">
             <header class="view-title">
               <p>03 / Content-free Audit</p>

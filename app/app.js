@@ -111,8 +111,19 @@
   };
 
   navButtons.forEach((button) => {
-    button.addEventListener('click', () => showView(button.dataset.viewTarget));
+    button.addEventListener('click', () => {
+      const name = button.dataset.viewTarget;
+      showView(name);
+      window.history.replaceState(null, '', `#${name}`);
+    });
   });
+
+  const showHashView = () => {
+    const name = window.location.hash.slice(1);
+    if (viewNames[name]) showView(name);
+  };
+
+  window.addEventListener('hashchange', showHashView);
 
   const appendMessage = (text) => {
     const message = document.createElement('article');
@@ -264,7 +275,8 @@
     addAudit('DEVICE_KEY_READY', 'TRUST KERNEL');
   };
 
-  showView('signal');
+  if (viewNames[window.location.hash.slice(1)]) showHashView();
+  else showView('signal');
   initialize().catch((error) => {
     if (keyState) keyState.textContent = 'Initialization failed';
     console.error('Trust Lab initialization failed', error);

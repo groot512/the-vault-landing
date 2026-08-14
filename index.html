@@ -16,16 +16,51 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="styles.css?v=260814-11">
+    <link rel="stylesheet" href="styles.css?v=260815-1">
+    <link rel="stylesheet" href="navigation.css?v=260815-1">
     <script>
       document.documentElement.classList.remove('no-js');
       document.documentElement.classList.add('js');
     </script>
     <script src="https://unpkg.com/lenis@1.3.25/dist/lenis.min.js" defer></script>
-    <script src="script.js?v=260814-11" defer></script>
+    <script src="script.js?v=260815-1" defer></script>
+    <script src="navigation.js?v=260815-1" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#hero-title">본문으로 건너뛰기</a>
+
+    <header class="global-nav" data-global-nav>
+      <a class="global-nav__brand" href="./" aria-label="THE VAULT 홈">THE VAULT</a>
+      <button class="global-nav__toggle" type="button" aria-expanded="false" aria-controls="global-menu" data-global-nav-toggle>
+        <span class="global-nav__toggle-open">Menu</span><span class="global-nav__toggle-close">Close</span>
+      </button>
+      <nav class="global-nav__menu" id="global-menu" aria-label="THE VAULT 전체 메뉴">
+        <div class="global-nav__item"><a class="global-nav__link" href="#philosophy">Philosophy</a></div>
+        <div class="global-nav__item"><a class="global-nav__link" href="#vision">Vision</a></div>
+        <div class="global-nav__item"><a class="global-nav__link" href="#approach">Approach</a></div>
+        <div class="global-nav__item">
+          <a class="global-nav__trigger" href="tessera/">Tessera ↗</a>
+          <button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-tessera" data-submenu-toggle><span class="sr-only">Tessera 세부 메뉴</span></button>
+          <div class="global-nav__submenu" id="nav-tessera">
+            <a href="tessera/"><span>00</span>Overview</a><a href="tessera/#proof"><span>01</span>Proof</a><a href="tessera/#architecture"><span>02</span>Architecture</a><a href="tessera/#status"><span>03</span>Status</a>
+          </div>
+        </div>
+        <div class="global-nav__item">
+          <a class="global-nav__trigger" href="digital-vault/">Digital Vault ↗</a>
+          <button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-digital" data-submenu-toggle><span class="sr-only">Digital Vault 세부 메뉴</span></button>
+          <div class="global-nav__submenu" id="nav-digital">
+            <a href="digital-vault/"><span>00</span>Overview</a><a href="digital-vault/#proof"><span>01</span>Proof</a><a href="digital-vault/#architecture"><span>02</span>Architecture</a><a href="digital-vault/#status"><span>03</span>Status</a>
+          </div>
+        </div>
+        <div class="global-nav__item">
+          <a class="global-nav__trigger" href="app/">Trust Lab ↗</a>
+          <button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-lab" data-submenu-toggle><span class="sr-only">Trust Lab 세부 메뉴</span></button>
+          <div class="global-nav__submenu" id="nav-lab">
+            <a href="app/#signal"><span>01</span>Tessera Proof</a><a href="app/#archive"><span>02</span>Vault Proof</a><a href="app/#audit"><span>03</span>Audit</a>
+          </div>
+        </div>
+      </nav>
+    </header>
 
     <main>
       <section class="hero" aria-labelledby="hero-title">
@@ -53,10 +88,6 @@
 
           <div class="hero__frame">
             <header class="hero__masthead">
-              <a class="hero__logo" href="./" aria-label="THE VAULT 홈">
-                <span class="hero__logo-the">THE</span>
-                <span class="hero__logo-vault">VAULT</span>
-              </a>
               <span class="hero__edition" aria-hidden="true">SEOUL · 2026</span>
             </header>
 
