@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#171714">
+    <meta name="robots" content="noindex, nofollow">
+    <meta
+      name="description"
+      content="TESSERA by THE VAULT — 사용자 기기에서 암호화되는 기업 보안 메신저의 Private Prototype."
+    >
+    <title>TESSERA by THE VAULT — Secure Signal</title>
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    >
+    <link rel="stylesheet" href="../products.css?v=260814-1">
+    <script src="../products.js?v=260814-1" defer></script>
+  </head>
+  <body class="product--tessera">
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <header class="product-nav">
+      <a class="product-nav__brand" href="../" aria-label="THE VAULT 홈으로 이동">
+        THE VAULT <span>/</span> <strong>TESSERA</strong>
+      </a>
+      <nav aria-label="TESSERA 페이지">
+        <a href="#proof">Proof</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#status">Status</a>
+        <a href="../app/">Trust Lab ↗</a>
+        <a href="../digital-vault/">Digital Vault ↗</a>
+      </nav>
+      <span class="product-nav__status">Private Prototype · 01</span>
+    </header>
+
+    <main id="main">
+      <section class="product-hero" aria-labelledby="tessera-title">
+        <p class="product-hero__eyebrow">Secure Signal / TESSERA by THE VAULT</p>
+        <p class="product-hero__status">Browser prototype<br>Not a certified product</p>
+
+        <h1 class="product-hero__title" id="tessera-title">
+          <span>서버는</span>
+          <span>열쇠를</span>
+          <span>갖지 않습니다.</span>
+        </h1>
+
+        <div class="product-hero__bottom">
+          <p class="product-hero__lede">
+            TESSERA는 중요한 대화와 파일을 사용자 기기에서 암호화하고,
+            서버에는 암호화된 콘텐츠만 전달하는 기업용 보안 메신저를 목표로 개발 중입니다.
+          </p>
+          <p class="product-hero__meta">
+            <span>Identity / Device / Boundary</span>
+            <span>Private pilot target · 2026</span>
+          </p>
+        </div>
+
+        <div class="product-hero__field" data-product-field aria-hidden="true"></div>
+      </section>
+
+      <section class="product-section product-section--dark" id="proof" aria-labelledby="proof-title">
+        <header class="product-section__head">
+          <p class="product-kicker">01 / Browser Proof</p>
+          <h2 id="proof-title">같은 메시지.<br>두 개의 상태.</h2>
+          <p class="product-section__intro">
+            왼쪽은 사용자에게 보이는 평문입니다. 오른쪽은 이 브라우저 안에서 일회성 키로
+            암호화한 실제 결과입니다. 이 데모는 클라이언트 암호화 경계를 설명하며,
+            완성된 TESSERA 통신 프로토콜이나 보안 인증을 의미하지 않습니다.
+          </p>
+        </header>
+
+        <div
+          class="proof-board"
+          data-crypto-proof
+          data-plaintext="3분기 여신 심사 기준 초안입니다. 리스크팀 의견을 반영해 4페이지 한도 산식만 수정했습니다."
+        >
+          <div class="proof-board__meta" aria-hidden="true">
+            <span>User device / Plaintext</span>
+            <span>Transport boundary / Ciphertext</span>
+          </div>
+
+          <div class="proof-board__grid">
+            <article class="proof-panel">
+              <div>
+                <p class="proof-panel__label">사용자 기기</p>
+                <div class="proof-message">
+                  <span class="proof-message__sender">박현수 · Risk Team</span>
+                  <p>3분기 여신 심사 기준 초안입니다. 리스크팀 의견을 반영해 4페이지 한도 산식만 수정했습니다.</p>
+                </div>
+              </div>
+              <button class="proof-action" type="button" data-proof-action>
+                Encrypt in this browser
+                <span aria-hidden="true">→</span>
+              </button>
+            </article>
+
+            <article class="proof-panel">
+              <div>
+                <p class="proof-panel__label">암호화 경계</p>
+                <div class="proof-cipher" data-proof-output aria-label="암호화된 메시지 결과">
+                  Proof가 화면에 들어오면 브라우저에서 암호화를 실행합니다.
+                </div>
+              </div>
+              <p class="proof-panel__status" data-proof-status aria-live="polite">Waiting for proof</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="proof-note">
+          <p>
+            이 Proof는 네트워크 요청 없이 Web Crypto AES-GCM으로 실행됩니다.
+            상용 메시징은 검증된 E2EE 스택, 기기 검증, 키 교체, 복구 정책과 외부 보안 검토가 추가로 필요합니다.
+          </p>
+        </div>
+      </section>
+
+      <section class="product-story" id="architecture" data-product-story aria-labelledby="architecture-title">
+        <div class="product-story__stage">
+          <p class="product-story__index" data-story-index aria-hidden="true">01</p>
+
+          <div class="product-story__content">
+            <header class="product-story__head">
+              <p>02 / Trust Kernel</p>
+              <p>TESSERA System</p>
+            </header>
+
+            <div class="product-story__steps">
+              <article class="product-story__step is-active" data-story-step>
+                <h2 id="architecture-title">Identity</h2>
+                <p>
+                  계정만으로 신뢰하지 않습니다. 사용자와 등록 기기를 함께 식별하고,
+                  새로운 기기는 기존 기기 또는 복구 절차를 통해 검증하는 구조를 설계합니다.
+                </p>
+              </article>
+
+              <article class="product-story__step" data-story-step>
+                <h2>Encrypted<br>Delivery</h2>
+                <p>
+                  메시지와 파일은 사용자 기기에서 암호화된 뒤 전송됩니다.
+                  상용 구현에서는 직접 만든 암호 프로토콜이 아닌 검증된 E2EE 스택을 사용합니다.
+                </p>
+              </article>
+
+              <article class="product-story__step" data-story-step>
+                <h2>Content-free<br>Audit</h2>
+                <p>
+                  기업 운영에 필요한 접속, 기기, 전송 이벤트는 기록하되 메시지와 파일 내용은
+                  감사 로그에 포함하지 않는 경계를 목표로 합니다.
+                </p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="product-bridge" aria-labelledby="bridge-title">
+        <p class="product-bridge__kicker">03 / Signal to Archive</p>
+        <div class="product-bridge__content">
+          <h2 id="bridge-title">대화가 끝나도,<br>보호는 이어집니다.</h2>
+          <div class="product-bridge__bottom">
+            <p>
+              TESSERA에서 전달된 중요 첨부파일은 DIGITAL VAULT로 이동해
+              접근 권한, 만료, 보관 생명주기를 이어서 관리합니다.
+            </p>
+            <a class="editorial-link" href="../digital-vault/">
+              Continue to DIGITAL VAULT
+              <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="product-status" id="status" aria-labelledby="status-title">
+        <header class="product-status__head">
+          <p>04 / Honest Status</p>
+          <h2 id="status-title">지금 있는 것과<br>다음에 만들 것.</h2>
+        </header>
+
+        <div class="product-status__rows">
+          <div class="product-status__row">
+            <span>2026.08</span>
+            <span>Brand system</span>
+            <strong>제품 페이지와 브라우저 암호화 Proof</strong>
+            <em>Now</em>
+          </div>
+          <div class="product-status__row">
+            <span>Next</span>
+            <span>Technical spike</span>
+            <strong>기기 키, 1:1·소규모 그룹 메시징, 암호화 첨부</strong>
+            <em>Build</em>
+          </div>
+          <div class="product-status__row">
+            <span>Pilot</span>
+            <span>Private deployment</span>
+            <strong>디자인 파트너 환경에서 위협 모델과 운영 절차 검증</strong>
+            <em>Validate</em>
+          </div>
+          <div class="product-status__row">
+            <span>Later</span>
+            <span>Independent review</span>
+            <strong>외부 암호 구현 검토와 침투 테스트 후 상용 범위 확정</strong>
+            <em>Review</em>
+          </div>
+        </div>
+      </section>
+
+      <section class="product-cta" id="contact" aria-labelledby="contact-title">
+        <p class="product-cta__kicker">05 / Private Pilot</p>
+        <h2 id="contact-title">가장 까다로운<br>환경에서<br>먼저 검증합니다.</h2>
+        <a
+          class="product-cta__action"
+          href="mailto:hgs011809@naver.com?subject=TESSERA%20Private%20Pilot"
+        >
+          Request a private pilot
+          <span aria-hidden="true">↗</span>
+        </a>
+
+        <footer class="product-footer">
+          <a class="product-footer__brand" href="../"><span>The</span>Vault</a>
+          <nav aria-label="제품 페이지">
+            <a href="../">Master Brand</a>
+            <a href="../digital-vault/">Digital Vault</a>
+            <a href="../app/">Trust Lab</a>
+          </nav>
+          <p>Secure Signal · Private Prototype</p>
+          <p>© 2026 THE VAULT Co., Ltd.</p>
+        </footer>
+      </section>
+    </main>
+  </body>
+</html>

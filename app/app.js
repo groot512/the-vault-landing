@@ -1,0 +1,272 @@
+(() => {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const views = [...document.querySelectorAll('[data-view]')];
+  const navButtons = [...document.querySelectorAll('[data-view-target]')];
+  const viewTitle = document.querySelector('[data-view-title]');
+  const keyState = document.querySelector('[data-key-state]');
+  const deviceId = document.querySelector('[data-device-id]');
+  const messageForm = document.querySelector('[data-message-form]');
+  const messageStream = document.querySelector('[data-message-stream]');
+  const messageInput = document.querySelector('#message-input');
+  const boundaryOutput = document.querySelector('[data-boundary-output]');
+  const boundaryStatus = document.querySelector('[data-boundary-status]');
+  const fileInput = document.querySelector('[data-file-input]');
+  const fileOutput = document.querySelector('[data-file-output]');
+  const fileStatus = document.querySelector('[data-file-status]');
+  const vaultList = document.querySelector('[data-vault-list]');
+  const auditLedger = document.querySelector('[data-audit-ledger]');
+  const vaultItems = new Map();
+  let messageKey = null;
+  let auditCounter = 0;
+
+  const viewNames = {
+    signal: 'TESSERA',
+    archive: 'DIGITAL VAULT',
+    audit: 'AUDIT LEDGER',
+  };
+
+  const makeId = (length = 8) => {
+    const bytes = window.crypto.getRandomValues(new Uint8Array(length));
+    return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+  };
+
+  const bytesToBase64 = (bytes) => {
+    let binary = '';
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return window.btoa(binary);
+  };
+
+  const renderPayload = (target, bytes) => {
+    target.replaceChildren();
+    const groups = bytesToBase64(bytes).match(/.{1,12}/g) || [];
+    groups.slice(0, 48).forEach((group, index) => {
+      const node = document.createElement(index % 6 === 0 ? 'span' : 'b');
+      node.textContent = `${group} `;
+      if (node.tagName === 'B') node.style.fontWeight = 'inherit';
+      target.appendChild(node);
+    });
+    if (groups.length > 48) target.append('…');
+  };
+
+  const createKey = () => window.crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+
+  const encryptBytes = async (key, plainBytes) => {
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plainBytes);
+    const cipher = new Uint8Array(encrypted);
+    const payload = new Uint8Array(iv.length + cipher.length);
+    payload.set(iv);
+    payload.set(cipher, iv.length);
+    return { iv, cipher, payload };
+  };
+
+  const decryptBytes = (key, iv, cipher) => window.crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    cipher,
+  );
+
+  const addAudit = (event, scope = 'LOCAL') => {
+    auditCounter += 1;
+    const row = document.createElement('div');
+    row.className = 'audit-event';
+
+    const time = document.createElement('time');
+    time.dateTime = new Date().toISOString();
+    time.textContent = new Intl.DateTimeFormat('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(new Date());
+
+    const name = document.createElement('strong');
+    name.textContent = event;
+    const eventScope = document.createElement('span');
+    eventScope.textContent = `${scope} / ${String(auditCounter).padStart(3, '0')}`;
+
+    row.append(time, name, eventScope);
+    auditLedger?.prepend(row);
+  };
+
+  const showView = (name) => {
+    views.forEach((view) => {
+      const isActive = view.dataset.view === name;
+      view.hidden = !isActive;
+      view.classList.toggle('is-active', isActive);
+    });
+    navButtons.forEach((button) => {
+      const isActive = button.dataset.viewTarget === name;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+    if (viewTitle) viewTitle.textContent = viewNames[name] || name;
+  };
+
+  navButtons.forEach((button) => {
+    button.addEventListener('click', () => showView(button.dataset.viewTarget));
+  });
+
+  const appendMessage = (text) => {
+    const message = document.createElement('article');
+    message.className = 'message message--mine';
+    const sender = document.createElement('span');
+    sender.textContent = `Demo User · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+    const body = document.createElement('p');
+    body.textContent = text;
+    message.append(sender, body);
+    messageStream?.appendChild(message);
+    message.scrollIntoView({ block: 'nearest' });
+  };
+
+  messageForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const plain = messageInput?.value.trim();
+    if (!plain || !messageKey) return;
+
+    const submit = messageForm.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    if (boundaryStatus) boundaryStatus.textContent = 'Encrypting locally';
+
+    try {
+      const encrypted = await encryptBytes(messageKey, encoder.encode(plain));
+      const decrypted = await decryptBytes(messageKey, encrypted.iv, encrypted.cipher);
+      const verified = decoder.decode(decrypted) === plain;
+      renderPayload(boundaryOutput, encrypted.payload);
+      if (boundaryStatus) boundaryStatus.textContent = verified
+        ? `Verified / ${encrypted.payload.byteLength} bytes`
+        : 'Verification failed';
+      appendMessage(plain);
+      messageInput.value = '';
+      addAudit('MESSAGE_ENCRYPTED', 'TESSERA');
+    } catch (error) {
+      if (boundaryStatus) boundaryStatus.textContent = 'Encryption failed';
+      console.error('Message proof failed', error);
+    } finally {
+      submit.disabled = false;
+      messageInput?.focus();
+    }
+  });
+
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  };
+
+  const downloadVaultItem = async (id) => {
+    const item = vaultItems.get(id);
+    if (!item?.key) return;
+    const decrypted = await decryptBytes(item.key, item.iv, item.cipher);
+    const blob = new Blob([decrypted], { type: item.type || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = item.name;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    addAudit('FILE_DECRYPTED', 'DIGITAL VAULT');
+  };
+
+  const revokeVaultItem = (id, row) => {
+    const item = vaultItems.get(id);
+    if (!item) return;
+    item.key = null;
+    row.querySelectorAll('button').forEach((button) => {
+      button.disabled = true;
+    });
+    const state = row.querySelector('[data-item-state]');
+    if (state) state.textContent = 'Key revoked / inaccessible';
+    addAudit('FILE_KEY_REVOKED', 'DIGITAL VAULT');
+  };
+
+  const appendVaultItem = (id, file) => {
+    vaultList?.querySelector('.vault-list__empty')?.remove();
+    const row = document.createElement('article');
+    row.className = 'vault-item';
+
+    const info = document.createElement('div');
+    const state = document.createElement('span');
+    state.dataset.itemState = '';
+    state.textContent = `Encrypted / ${formatSize(file.size)}`;
+    const name = document.createElement('strong');
+    name.textContent = file.name;
+    info.append(state, name);
+
+    const actions = document.createElement('div');
+    actions.className = 'vault-item__actions';
+    const download = document.createElement('button');
+    download.type = 'button';
+    download.textContent = 'Decrypt';
+    download.addEventListener('click', () => downloadVaultItem(id));
+    const revoke = document.createElement('button');
+    revoke.type = 'button';
+    revoke.textContent = 'Revoke';
+    revoke.addEventListener('click', () => revokeVaultItem(id, row));
+    actions.append(download, revoke);
+    row.append(info, actions);
+    vaultList?.prepend(row);
+  };
+
+  fileInput?.addEventListener('change', async () => {
+    const [file] = fileInput.files || [];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      if (fileStatus) fileStatus.textContent = 'File exceeds 10 MB';
+      fileInput.value = '';
+      return;
+    }
+
+    if (fileStatus) fileStatus.textContent = 'Encrypting before upload';
+    try {
+      const key = await createKey();
+      const plainBytes = new Uint8Array(await file.arrayBuffer());
+      const encrypted = await encryptBytes(key, plainBytes);
+      const id = makeId(6);
+      vaultItems.set(id, {
+        key,
+        iv: encrypted.iv,
+        cipher: encrypted.cipher,
+        name: file.name,
+        type: file.type,
+      });
+      renderPayload(fileOutput, encrypted.payload);
+      if (fileStatus) fileStatus.textContent = `Encrypted / ${formatSize(encrypted.payload.byteLength)}`;
+      appendVaultItem(id, file);
+      addAudit('FILE_ENCRYPTED', 'DIGITAL VAULT');
+    } catch (error) {
+      if (fileStatus) fileStatus.textContent = 'Encryption failed';
+      console.error('File proof failed', error);
+    } finally {
+      fileInput.value = '';
+    }
+  });
+
+  const initialize = async () => {
+    if (!window.crypto?.subtle) {
+      if (keyState) keyState.textContent = 'Web Crypto unavailable';
+      messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+      fileInput?.setAttribute('disabled', '');
+      return;
+    }
+
+    const id = makeId(4);
+    if (deviceId) deviceId.textContent = `DEVICE / ${id}`;
+    messageKey = await createKey();
+    if (keyState) keyState.textContent = 'Non-exportable session key ready';
+    addAudit('DEVICE_KEY_READY', 'TRUST KERNEL');
+  };
+
+  showView('signal');
+  initialize().catch((error) => {
+    if (keyState) keyState.textContent = 'Initialization failed';
+    console.error('Trust Lab initialization failed', error);
+  });
+})();

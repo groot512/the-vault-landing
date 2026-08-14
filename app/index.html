@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#171714">
+    <meta name="robots" content="noindex, nofollow">
+    <meta
+      name="description"
+      content="THE VAULT Trust Lab — TESSERA와 DIGITAL VAULT의 브라우저 로컬 암호화 MVP 데모."
+    >
+    <title>VAULT TRUST LAB — Local MVP</title>
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    >
+    <link rel="stylesheet" href="app.css?v=260814-1">
+    <script src="app.js?v=260814-1" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">작업영역으로 건너뛰기</a>
+
+    <header class="lab-header">
+      <a class="lab-header__brand" href="../">
+        <span>THE VAULT</span>
+        <strong>TRUST LAB</strong>
+      </a>
+      <div class="lab-header__session">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>Local session</span>
+        <strong data-device-id>DEVICE / PREPARING</strong>
+      </div>
+      <a class="lab-header__exit" href="../tessera/">Exit demo ↗</a>
+    </header>
+
+    <main class="lab-shell" id="workspace">
+      <aside class="lab-sidebar">
+        <div>
+          <p class="lab-sidebar__label">Products</p>
+          <nav aria-label="Trust Lab 기능">
+            <button class="lab-nav is-active" type="button" data-view-target="signal">
+              <span>01</span>
+              <strong>Tessera</strong>
+              <em>Secure Signal</em>
+            </button>
+            <button class="lab-nav" type="button" data-view-target="archive">
+              <span>02</span>
+              <strong>Digital Vault</strong>
+              <em>Secure Archive</em>
+            </button>
+            <button class="lab-nav" type="button" data-view-target="audit">
+              <span>03</span>
+              <strong>Audit</strong>
+              <em>Content-free events</em>
+            </button>
+          </nav>
+        </div>
+
+        <div class="lab-sidebar__notice">
+          <span>Prototype boundary</span>
+          <p>모든 암호화는 이 브라우저 메모리에서 실행됩니다. 서버 전송과 영구 저장은 없습니다.</p>
+        </div>
+      </aside>
+
+      <section class="lab-workspace">
+        <header class="workspace-head">
+          <div>
+            <p>VAULT / PRIVATE PROJECT</p>
+            <h1 data-view-title>TESSERA</h1>
+          </div>
+          <dl>
+            <div><dt>Identity</dt><dd>Demo User / Verified Device</dd></div>
+            <div><dt>Key state</dt><dd data-key-state>Generating local key</dd></div>
+          </dl>
+        </header>
+
+        <section class="lab-view is-active" data-view="signal" aria-labelledby="signal-title">
+          <div class="view-main">
+            <header class="view-title">
+              <p>01 / Secure Signal</p>
+              <h2 id="signal-title">Project<br>Orbit</h2>
+              <span>3 verified devices · Local prototype</span>
+            </header>
+
+            <div class="message-stream" data-message-stream aria-live="polite">
+              <article class="message message--system">
+                <span>Trust Kernel</span>
+                <p>이 세션의 기기 키가 준비되면 입력한 메시지는 브라우저에서 암호화됩니다.</p>
+              </article>
+            </div>
+
+            <form class="composer" data-message-form>
+              <label for="message-input">암호화할 메시지</label>
+              <textarea
+                id="message-input"
+                name="message"
+                rows="3"
+                placeholder="민감한 프로젝트 메시지를 입력하세요."
+                required
+              ></textarea>
+              <div>
+                <span>Plaintext stays in this tab</span>
+                <button type="submit">Encrypt &amp; send <b aria-hidden="true">→</b></button>
+              </div>
+            </form>
+          </div>
+
+          <aside class="boundary-panel" aria-label="암호화 경계 검사기">
+            <header>
+              <p>Boundary Inspector</p>
+              <span data-boundary-status>Waiting</span>
+            </header>
+            <div class="boundary-panel__cipher" data-boundary-output>
+              메시지를 전송하면 네트워크 경계에 전달될 암호화 payload가 여기에 표시됩니다.
+            </div>
+            <dl>
+              <div><dt>Network</dt><dd>Disabled</dd></div>
+              <div><dt>Algorithm</dt><dd>AES-GCM / Browser proof</dd></div>
+              <div><dt>Plaintext log</dt><dd>None</dd></div>
+            </dl>
+          </aside>
+        </section>
+
+        <section class="lab-view" data-view="archive" aria-labelledby="archive-title" hidden>
+          <div class="view-main">
+            <header class="view-title">
+              <p>02 / Secure Archive</p>
+              <h2 id="archive-title">Digital<br>Vault</h2>
+              <span>Per-file key · Memory only</span>
+            </header>
+
+            <label class="file-drop" for="vault-file">
+              <input id="vault-file" type="file" data-file-input>
+              <span>Choose a local file</span>
+              <strong>파일을 선택하면 업로드 전에 브라우저에서 암호화합니다.</strong>
+              <em>Maximum 10 MB · No network request</em>
+            </label>
+
+            <div class="vault-list" data-vault-list aria-live="polite">
+              <p class="vault-list__empty">아직 암호화된 파일이 없습니다.</p>
+            </div>
+          </div>
+
+          <aside class="boundary-panel" aria-label="파일 암호화 경계 검사기">
+            <header>
+              <p>Object Inspector</p>
+              <span data-file-status>Waiting</span>
+            </header>
+            <div class="boundary-panel__cipher" data-file-output>
+              파일을 선택하면 저장소에 전달될 암호화 payload의 일부가 표시됩니다.
+            </div>
+            <dl>
+              <div><dt>Object storage</dt><dd>Not connected</dd></div>
+              <div><dt>File key</dt><dd>Per item / Non-exportable</dd></div>
+              <div><dt>Retention</dt><dd>Session only</dd></div>
+            </dl>
+          </aside>
+        </section>
+
+        <section class="lab-view" data-view="audit" aria-labelledby="audit-title" hidden>
+          <div class="view-main view-main--audit">
+            <header class="view-title">
+              <p>03 / Content-free Audit</p>
+              <h2 id="audit-title">Event<br>Ledger</h2>
+              <span>Actions, not contents</span>
+            </header>
+
+            <div class="audit-ledger" data-audit-ledger aria-live="polite"></div>
+          </div>
+
+          <aside class="boundary-panel boundary-panel--note">
+            <header>
+              <p>Audit policy</p>
+              <span>Prototype</span>
+            </header>
+            <p>
+              이 화면은 이벤트 유형과 시간만 기록합니다. 메시지 본문과 파일 데이터는 감사 항목에 포함하지 않습니다.
+              실제 파일럿에서는 조직 정책, 보존 기간, 무결성 검증을 별도로 설계해야 합니다.
+            </p>
+          </aside>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

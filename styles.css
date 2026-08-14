@@ -1012,6 +1012,33 @@ a {
   letter-spacing: -0.03em;
 }
 
+.approach__product-link {
+  display: flex;
+  width: min(75%, 31rem);
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 0;
+  margin: clamp(1.25rem, 2.5vh, 2rem) 0 0 25%;
+  border-top: 1px solid rgb(23 23 20 / 28%);
+  border-bottom: 1px solid rgb(23 23 20 / 28%);
+  color: var(--charcoal);
+  font-size: 0.68rem;
+  letter-spacing: 0.13em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.approach__product-link span {
+  color: var(--accent);
+  font-size: 1.35em;
+  transition: transform 240ms var(--editorial-ease);
+}
+
+.approach__product-link:hover span,
+.approach__product-link:focus-visible span {
+  transform: translate3d(0.22rem, -0.22rem, 0);
+}
+
 .approach__layers,
 .approach__signal-map,
 .approach__archive-index {
@@ -1675,6 +1702,11 @@ a {
   }
 
   .approach__description {
+    margin-left: 17%;
+  }
+
+  .approach__product-link {
+    width: 83%;
     margin-left: 17%;
   }
 

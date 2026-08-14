@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f2eee3">
+    <meta name="robots" content="noindex, nofollow">
+    <meta
+      name="description"
+      content="DIGITAL VAULT by THE VAULT — 사용자 기기에서 암호화되는 문서·파일 보관 서비스의 Private Prototype."
+    >
+    <title>DIGITAL VAULT by THE VAULT — Secure Archive</title>
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    >
+    <link rel="stylesheet" href="../products.css?v=260814-1">
+    <script src="../products.js?v=260814-1" defer></script>
+  </head>
+  <body class="product--archive">
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <header class="product-nav">
+      <a class="product-nav__brand" href="../" aria-label="THE VAULT 홈으로 이동">
+        THE VAULT <span>/</span> <strong>DIGITAL VAULT</strong>
+      </a>
+      <nav aria-label="DIGITAL VAULT 페이지">
+        <a href="#proof">Proof</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#status">Status</a>
+        <a href="../app/">Trust Lab ↗</a>
+        <a href="../tessera/">Tessera ↗</a>
+      </nav>
+      <span class="product-nav__status">Private Prototype · 02</span>
+    </header>
+
+    <main id="main">
+      <section class="product-hero" aria-labelledby="vault-title">
+        <p class="product-hero__eyebrow">Secure Archive / DIGITAL VAULT by THE VAULT</p>
+        <p class="product-hero__status">Browser prototype<br>Not a storage service</p>
+
+        <h1 class="product-hero__title" id="vault-title">
+          <span>파일은 남겨도</span>
+          <span>열쇠는</span>
+          <span>남기지 않습니다.</span>
+        </h1>
+
+        <div class="product-hero__bottom">
+          <p class="product-hero__lede">
+            DIGITAL VAULT는 문서와 파일을 사용자 기기에서 먼저 암호화하고,
+            허용된 사용자와 등록 기기만 다시 열 수 있는 Secure Archive를 목표로 개발 중입니다.
+          </p>
+          <p class="product-hero__meta">
+            <span>Encrypt / Grant / Expire</span>
+            <span>Private pilot target · 2026</span>
+          </p>
+        </div>
+
+        <div class="product-hero__field" data-product-field aria-hidden="true"></div>
+      </section>
+
+      <section class="product-section product-section--dark" id="proof" aria-labelledby="proof-title">
+        <header class="product-section__head">
+          <p class="product-kicker">01 / Browser Proof</p>
+          <h2 id="proof-title">업로드 전에<br>먼저 잠급니다.</h2>
+          <p class="product-section__intro">
+            샘플 문서 데이터는 이 브라우저 안에서 생성한 일회성 키로 암호화됩니다.
+            오른쪽 결과만 저장소에 전달한다는 제품 원리를 실제 Web Crypto 연산으로 보여주는 기술 시연입니다.
+            현재 페이지는 파일을 서버에 업로드하거나 보관하지 않습니다.
+          </p>
+        </header>
+
+        <div
+          class="proof-board"
+          data-crypto-proof
+          data-plaintext="PROJECT ORBIT / M&A 검토자료 / 기업가치 산정표 / 열람등급 A / 보관기간 72시간"
+        >
+          <div class="proof-board__meta" aria-hidden="true">
+            <span>Local file / Before upload</span>
+            <span>Object storage / Encrypted payload</span>
+          </div>
+
+          <div class="proof-board__grid">
+            <article class="proof-panel">
+              <div>
+                <p class="proof-panel__label">사용자 기기</p>
+                <div class="proof-file">
+                  <div>
+                    <span class="proof-file__type">Confidential / Level A</span>
+                    <strong>기업가치_산정표_v7.pdf</strong>
+                  </div>
+                  <em>8.4 MB</em>
+                </div>
+              </div>
+              <button class="proof-action" type="button" data-proof-action>
+                Encrypt before upload
+                <span aria-hidden="true">→</span>
+              </button>
+            </article>
+
+            <article class="proof-panel">
+              <div>
+                <p class="proof-panel__label">암호화 저장 경계</p>
+                <div class="proof-cipher" data-proof-output aria-label="암호화된 파일 데이터 결과">
+                  Proof가 화면에 들어오면 브라우저에서 암호화를 실행합니다.
+                </div>
+              </div>
+              <p class="proof-panel__status" data-proof-status aria-live="polite">Waiting for proof</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="proof-note">
+          <p>
+            이 데모는 샘플 문자열을 Web Crypto AES-GCM으로 암호화합니다.
+            실제 파일 MVP는 대용량 스트리밍 암호화, 파일별 키, 수신자별 키 래핑,
+            변조 검증과 복구 정책을 별도로 구현해야 합니다.
+          </p>
+        </div>
+      </section>
+
+      <section class="product-story" id="architecture" data-product-story aria-labelledby="architecture-title">
+        <div class="product-story__stage">
+          <p class="product-story__index" data-story-index aria-hidden="true">01</p>
+
+          <div class="product-story__content">
+            <header class="product-story__head">
+              <p>02 / Trust Kernel</p>
+              <p>DIGITAL VAULT System</p>
+            </header>
+
+            <div class="product-story__steps">
+              <article class="product-story__step is-active" data-story-step>
+                <h2 id="architecture-title">Client<br>Encryption</h2>
+                <p>
+                  파일은 저장소에 도착하기 전에 사용자 기기에서 암호화됩니다.
+                  저장 인프라가 보관하는 대상은 원본이 아니라 암호화된 payload입니다.
+                </p>
+              </article>
+
+              <article class="product-story__step" data-story-step>
+                <h2>Controlled<br>Access</h2>
+                <p>
+                  공유 링크가 아니라 사용자, 등록 기기, 파일 키의 관계로 접근을 설계합니다.
+                  권한 취소와 신규 기기 등록이 이후 접근 범위에 반영되어야 합니다.
+                </p>
+              </article>
+
+              <article class="product-story__step" data-story-step>
+                <h2>Defined<br>Lifecycle</h2>
+                <p>
+                  파일마다 보관 기간과 만료 시점을 정의하고, 누가 언제 접근했는지는 기록하되
+                  문서 내용은 감사 로그에서 분리하는 구조를 목표로 합니다.
+                </p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="product-bridge" aria-labelledby="bridge-title">
+        <p class="product-bridge__kicker">03 / Signal to Archive</p>
+        <div class="product-bridge__content">
+          <h2 id="bridge-title">파일은 대화에서<br>시작됩니다.</h2>
+          <div class="product-bridge__bottom">
+            <p>
+              TESSERA의 암호화 첨부파일을 DIGITAL VAULT에 보관하면
+              전달과 보관이 하나의 기기 신뢰·권한 체계로 이어집니다.
+            </p>
+            <a class="editorial-link" href="../tessera/">
+              Return to TESSERA
+              <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="product-status" id="status" aria-labelledby="status-title">
+        <header class="product-status__head">
+          <p>04 / Honest Status</p>
+          <h2 id="status-title">완성된 금고가 아닌,<br>검증할 경계.</h2>
+        </header>
+
+        <div class="product-status__rows">
+          <div class="product-status__row">
+            <span>2026.08</span>
+            <span>Browser proof</span>
+            <strong>업로드 전 클라이언트 암호화 원리 시연</strong>
+            <em>Now</em>
+          </div>
+          <div class="product-status__row">
+            <span>Next</span>
+            <span>MVP archive</span>
+            <strong>암호화 업로드·다운로드, 공유, 만료, 접근 취소</strong>
+            <em>Build</em>
+          </div>
+          <div class="product-status__row">
+            <span>Pilot</span>
+            <span>Policy validation</span>
+            <strong>조직 권한, 기기 폐기, 보관 기간, 감사 이벤트 검증</strong>
+            <em>Validate</em>
+          </div>
+          <div class="product-status__row">
+            <span>Later</span>
+            <span>Independent review</span>
+            <strong>키 관리와 파일 암호 구현의 외부 보안 검토</strong>
+            <em>Review</em>
+          </div>
+        </div>
+      </section>
+
+      <section class="product-cta" id="contact" aria-labelledby="contact-title">
+        <p class="product-cta__kicker">05 / Design Partner</p>
+        <h2 id="contact-title">보관해야 할<br>가장 민감한<br>파일부터.</h2>
+        <a
+          class="product-cta__action"
+          href="mailto:hgs011809@naver.com?subject=DIGITAL%20VAULT%20Design%20Partner"
+        >
+          Discuss a secure archive pilot
+          <span aria-hidden="true">↗</span>
+        </a>
+
+        <footer class="product-footer">
+          <a class="product-footer__brand" href="../"><span>The</span>Vault</a>
+          <nav aria-label="제품 페이지">
+            <a href="../">Master Brand</a>
+            <a href="../tessera/">Tessera</a>
+            <a href="../app/">Trust Lab</a>
+          </nav>
+          <p>Secure Archive · Private Prototype</p>
+          <p>© 2026 THE VAULT Co., Ltd.</p>
+        </footer>
+      </section>
+    </main>
+  </body>
+</html>
