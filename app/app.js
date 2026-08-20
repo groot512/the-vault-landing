@@ -18,6 +18,7 @@
   const auditLedger = document.querySelector('[data-audit-ledger]');
   const vaultItems = new Map();
   let messageKey = null;
+  let activeIdentity = null;
   let auditCounter = 0;
 
   const viewNames = {
@@ -129,7 +130,7 @@
     const message = document.createElement('article');
     message.className = 'message message--mine';
     const sender = document.createElement('span');
-    sender.textContent = `Demo User · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+    sender.textContent = `${activeIdentity?.displayName || 'Verified User'} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
     const body = document.createElement('p');
     body.textContent = text;
     message.append(sender, body);
@@ -260,7 +261,7 @@
     }
   });
 
-  const initialize = async () => {
+  const initialize = async (identity) => {
     if (!window.crypto?.subtle) {
       if (keyState) keyState.textContent = 'Web Crypto unavailable';
       messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
@@ -268,17 +269,22 @@
       return;
     }
 
-    const id = makeId(4);
-    if (deviceId) deviceId.textContent = `DEVICE / ${id}`;
+    activeIdentity = identity;
+    const shortDeviceId = identity.device.id.split('-')[0].toUpperCase();
+    if (deviceId) deviceId.textContent = `${shortDeviceId} / ${identity.device.fingerprint}`;
     messageKey = await createKey();
-    if (keyState) keyState.textContent = 'Non-exportable session key ready';
+    if (keyState) keyState.textContent = 'Device verified / Session content key ready';
+    messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
+    fileInput?.removeAttribute('disabled');
+    addAudit('IDENTITY_VERIFIED', identity.mode);
     addAudit('DEVICE_KEY_READY', 'TRUST KERNEL');
   };
 
   if (viewNames[window.location.hash.slice(1)]) showHashView();
   else showView('signal');
-  initialize().catch((error) => {
+
+  window.addEventListener('vault:identity-ready', (event) => initialize(event.detail).catch((error) => {
     if (keyState) keyState.textContent = 'Initialization failed';
     console.error('Trust Lab initialization failed', error);
-  });
+  }), { once: true });
 })();
