@@ -187,6 +187,59 @@ label:has(input:focus-visible) {
   border-color: var(--gold);
 }
 
+.access-note {
+  margin-top: 2rem;
+}
+
+.access-note > p {
+  margin: 0;
+  color: var(--gold);
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.access-note h2 {
+  max-width: 32rem;
+  margin: 1rem 0;
+  font-size: clamp(1.7rem, 2.7vw, 3rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+}
+
+.access-note > span {
+  display: block;
+  max-width: 30rem;
+  color: rgb(23 23 20 / 55%);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.access-note dl {
+  margin: 2rem 0 0;
+  border-top: 1px solid var(--rule-dark);
+}
+
+.access-note dl div {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--rule-dark);
+}
+
+.access-note dt,
+.access-note dd {
+  margin: 0;
+  font-size: 0.65rem;
+}
+
+.access-note dt {
+  color: var(--gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .identity-form {
   display: grid;
   margin-top: 2rem;
@@ -218,6 +271,40 @@ label:has(input:focus-visible) {
 
 .identity-form input:focus {
   border-color: var(--gold);
+}
+
+.totp-enrollment {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: end;
+  margin-top: 2rem;
+}
+
+.totp-enrollment img {
+  display: block;
+  width: 9rem;
+  height: 9rem;
+  padding: 0.5rem;
+  background: #fff;
+  border: 1px solid var(--rule-dark);
+}
+
+.totp-enrollment span {
+  display: block;
+  margin-bottom: 0.6rem;
+  color: rgb(23 23 20 / 52%);
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.totp-enrollment code {
+  display: block;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  line-height: 1.5;
 }
 
 .identity-form button {
@@ -1108,6 +1195,16 @@ label:has(input:focus-visible) {
 
   .recovery-confirm__fields {
     grid-template-columns: 1fr;
+  }
+
+  .totp-enrollment {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .totp-enrollment img {
+    width: 7.5rem;
+    height: 7.5rem;
   }
 
   .lab-header {

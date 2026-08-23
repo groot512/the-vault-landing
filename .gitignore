@@ -6,4 +6,5 @@ Desktop.ini
 .vscode/
 
 tmp/
+supabase/
 *.log

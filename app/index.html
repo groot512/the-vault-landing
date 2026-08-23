@@ -7,21 +7,21 @@
     <meta name="robots" content="noindex, nofollow">
     <meta
       name="description"
-      content="THE VAULT Trust Lab — TESSERA와 DIGITAL VAULT의 브라우저 로컬 암호화 MVP 데모."
+      content="THE VAULT Trust Lab — VAULT ID, TOTP 인증과 브라우저 암호화 MVP 데모."
     >
-    <title>볼트 트러스트 랩 — 로컬 MVP</title>
+    <title>볼트 트러스트 랩 — 보안 MVP</title>
     <link
       rel="stylesheet"
       as="style"
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="app.css?v=260820-1">
+    <link rel="stylesheet" href="app.css?v=260824-1">
     <link rel="stylesheet" href="../navigation.css?v=260815-1">
-    <script src="../i18n.js?v=260820-1" defer></script>
+    <script src="../i18n.js?v=260824-1" defer></script>
     <script src="config.js?v=260820-1" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
-    <script src="identity.js?v=260820-2" defer></script>
+    <script src="identity.js?v=260824-1" defer></script>
     <script src="app.js?v=260820-1" defer></script>
     <script src="../navigation.js?v=260815-1" defer></script>
   </head>
@@ -76,28 +76,69 @@
             <button type="button" role="tab" aria-selected="false" data-auth-mode="signup">가입 신청</button>
           </div>
           <form class="identity-form" data-auth-form>
-            <div data-signup-field hidden>
-              <label for="auth-vault-id">VAULT ID</label>
-              <input id="auth-vault-id" name="vaultId" autocomplete="username" minlength="4" maxlength="24" pattern="[a-z0-9][a-z0-9_-]{3,23}">
-            </div>
-            <label for="auth-phone">휴대폰 번호</label>
-            <input id="auth-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+821012345678" pattern="\+[1-9][0-9]{7,14}" required>
+            <label for="auth-vault-id">VAULT ID</label>
+            <input id="auth-vault-id" name="vaultId" autocomplete="username" minlength="4" maxlength="24" pattern="[a-z0-9][a-z0-9_-]{3,23}" required>
             <label for="auth-password">비밀번호</label>
             <input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="12" required>
             <button type="submit" data-auth-submit>로그인 <b aria-hidden="true">→</b></button>
           </form>
+          <div class="access-note" data-access-note hidden>
+            <p>초대 전용 가입</p>
+            <h2>신청이 승인되면 VAULT ID와 임시 비밀번호를 발급합니다.</h2>
+            <span>실명·이메일·휴대폰 번호는 수집하지 않습니다. MVP 기간에는 담당자가 합의한 오프라인 채널로 임시 자격증명을 전달합니다.</span>
+            <dl>
+              <div><dt>01</dt><dd>접근 목적과 조직 확인</dd></div>
+              <div><dt>02</dt><dd>관리자 승인 및 임시 자격증명 발급</dd></div>
+              <div><dt>03</dt><dd>최초 로그인 후 비밀번호·인증 앱 등록</dd></div>
+            </dl>
+          </div>
         </div>
 
-        <div class="identity-panel" data-otp-panel hidden>
+        <div class="identity-panel" data-password-panel hidden>
           <div class="identity-panel__intro">
-            <p>휴대폰 확인</p>
-            <h2>문자로 받은 6자리 인증번호를 입력하세요.</h2>
-            <span>인증번호는 일회용이며 비밀번호나 복구키를 문자로 전송하지 않습니다.</span>
+            <p>최초 로그인</p>
+            <h2>임시 비밀번호를 나만의 비밀번호로 변경하세요.</h2>
+            <span>14자 이상을 권장합니다. 변경된 비밀번호와 복구키 원문은 서버에서 조회할 수 없습니다.</span>
           </div>
-          <form class="identity-form" data-otp-form>
-            <label for="auth-otp">인증번호</label>
-            <input id="auth-otp" name="token" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
-            <button type="submit">가입 확인 <b aria-hidden="true">→</b></button>
+          <form class="identity-form" data-password-form>
+            <label for="new-password">새 비밀번호</label>
+            <input id="new-password" name="newPassword" type="password" autocomplete="new-password" minlength="14" required>
+            <label for="confirm-password">새 비밀번호 확인</label>
+            <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="14" required>
+            <button type="submit">비밀번호 변경 <b aria-hidden="true">→</b></button>
+          </form>
+        </div>
+
+        <div class="identity-panel" data-totp-setup-panel hidden>
+          <div class="identity-panel__intro">
+            <p>인증 앱 등록</p>
+            <h2>인증 앱으로 QR 코드를 스캔하세요.</h2>
+            <span>Google Authenticator, Microsoft Authenticator, 1Password 등 표준 TOTP 앱을 사용할 수 있습니다.</span>
+          </div>
+          <div class="totp-enrollment">
+            <img data-totp-qr alt="인증 앱 등록 QR 코드">
+            <div>
+              <span>직접 입력용 설정 키</span>
+              <code data-totp-secret></code>
+            </div>
+          </div>
+          <form class="identity-form" data-totp-setup-form>
+            <label for="totp-setup-code">인증 앱의 6자리 코드</label>
+            <input id="totp-setup-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+            <button type="submit">인증 앱 연결 <b aria-hidden="true">→</b></button>
+          </form>
+        </div>
+
+        <div class="identity-panel" data-totp-challenge-panel hidden>
+          <div class="identity-panel__intro">
+            <p>2단계 인증</p>
+            <h2>인증 앱의 6자리 코드를 입력하세요.</h2>
+            <span>문자는 발송하지 않습니다. 등록한 기기의 인증 앱에서 현재 코드를 확인하세요.</span>
+          </div>
+          <form class="identity-form" data-totp-challenge-form>
+            <label for="totp-challenge-code">인증 코드</label>
+            <input id="totp-challenge-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+            <button type="submit">신원 확인 <b aria-hidden="true">→</b></button>
           </form>
         </div>
 
@@ -118,7 +159,7 @@
           <div class="identity-panel__intro">
             <p>마지막 복구 수단</p>
             <h2>12개 복구 코드워드를 오프라인에 보관하세요.</h2>
-            <span>이 문구는 다시 표시되지 않으며 문자·분석 로그·서버 원문에 저장되지 않습니다.</span>
+            <span>이 문구는 다시 표시되지 않으며 분석 로그·서버 원문에 저장되지 않습니다.</span>
           </div>
           <ol class="recovery-words" data-recovery-words aria-label="12개 복구 코드워드"></ol>
           <button class="recovery-print" type="button" data-recovery-print>복구키 인쇄</button>

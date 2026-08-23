@@ -3,20 +3,25 @@
   const lab = document.querySelector('[data-lab-shell]');
   const localPanel = document.querySelector('[data-local-panel]');
   const authPanel = document.querySelector('[data-auth-panel]');
-  const otpPanel = document.querySelector('[data-otp-panel]');
+  const passwordPanel = document.querySelector('[data-password-panel]');
+  const totpSetupPanel = document.querySelector('[data-totp-setup-panel]');
+  const totpChallengePanel = document.querySelector('[data-totp-challenge-panel]');
   const organizationPanel = document.querySelector('[data-organization-panel]');
   const recoveryPanel = document.querySelector('[data-recovery-panel]');
   const localForm = document.querySelector('[data-local-form]');
   const authForm = document.querySelector('[data-auth-form]');
-  const otpForm = document.querySelector('[data-otp-form]');
+  const passwordForm = document.querySelector('[data-password-form]');
+  const totpSetupForm = document.querySelector('[data-totp-setup-form]');
+  const totpChallengeForm = document.querySelector('[data-totp-challenge-form]');
   const organizationForm = document.querySelector('[data-organization-form]');
   const recoveryForm = document.querySelector('[data-recovery-form]');
   const recoveryWordsList = document.querySelector('[data-recovery-words]');
   const recoveryFields = document.querySelector('[data-recovery-fields]');
   const recoveryPrint = document.querySelector('[data-recovery-print]');
   const authModeButtons = [...document.querySelectorAll('[data-auth-mode]')];
-  const signupField = document.querySelector('[data-signup-field]');
-  const authSubmit = document.querySelector('[data-auth-submit]');
+  const accessNote = document.querySelector('[data-access-note]');
+  const totpQr = document.querySelector('[data-totp-qr]');
+  const totpSecret = document.querySelector('[data-totp-secret]');
   const feedback = document.querySelector('[data-identity-feedback]');
   const modeLabel = document.querySelector('[data-identity-mode]');
   const stepLabel = document.querySelector('[data-identity-step]');
@@ -34,7 +39,7 @@
   let client = null;
   let activeSession = null;
   let currentIdentity = null;
-  let pendingPhone = '';
+  let pendingTotpFactorId = '';
   let pendingRecoveryIdentity = null;
   let activeRecoveryWords = [];
   let recoveryConfirmationIndices = [];
@@ -56,6 +61,23 @@
       control.disabled = busy;
     });
   };
+
+  const remotePanels = [
+    authPanel,
+    passwordPanel,
+    totpSetupPanel,
+    totpChallengePanel,
+    organizationPanel,
+    recoveryPanel,
+  ];
+
+  const showOnlyPanel = (panel) => {
+    remotePanels.forEach((candidate) => {
+      if (candidate) candidate.hidden = candidate !== panel;
+    });
+  };
+
+  const toInternalEmail = (vaultId) => `${vaultId}@auth.thevault.invalid`;
 
   const openDeviceDatabase = () => new Promise((resolve, reject) => {
     const request = window.indexedDB.open(databaseName, 1);
@@ -174,11 +196,8 @@
     activeRecoveryWords = await window.vaultRecovery.generatePhrase();
     recoveryConfirmationIndices = selectConfirmationIndices();
     localPanel.hidden = true;
-    authPanel.hidden = true;
-    otpPanel.hidden = true;
-    organizationPanel.hidden = true;
-    recoveryPanel.hidden = false;
-    stepLabel.textContent = '05 / Recovery';
+    showOnlyPanel(recoveryPanel);
+    stepLabel.textContent = '06 / Recovery';
     recoveryWordsList.replaceChildren(...activeRecoveryWords.map((word, index) => {
       const item = document.createElement('li');
       const number = document.createElement('span');
@@ -240,32 +259,85 @@
     return data;
   };
 
+  const loadProfile = async (userId) => {
+    const { data, error } = await client
+      .from('profiles')
+      .select('vault_id')
+      .eq('id', userId)
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
   const completeRemoteIdentity = async (session) => {
     const membership = await loadMembership(session.user.id);
     if (!membership?.organizations) {
       activeSession = session;
-      authPanel.hidden = true;
-      organizationPanel.hidden = false;
-      stepLabel.textContent = '03 / Organization';
+      showOnlyPanel(organizationPanel);
+      stepLabel.textContent = '04 / Organization';
       setFeedback('계정이 확인되었습니다. 첫 조직을 생성하세요.');
       return;
     }
 
-    stepLabel.textContent = '04 / Device';
+    stepLabel.textContent = '05 / Device';
     setFeedback('기기 비공개 키를 확인하고 있습니다.');
+    const profile = await loadProfile(session.user.id);
     const device = await ensureDevice(`user:${session.user.id}`);
     await syncRemoteDevice(session.user, membership.organizations, device);
     const identity = {
       mode: 'SUPABASE',
       userId: session.user.id,
-      displayName: session.user.user_metadata?.vault_id || `vault-${session.user.id.slice(0, 8)}`,
-      phone: session.user.phone,
+      displayName: profile.vault_id,
       organization: membership.organizations,
       role: membership.role,
       device,
     };
     if (await hasRemoteRecovery(session.user.id)) revealWorkspace(identity);
     else await showRecoveryPanel(identity);
+  };
+
+  const beginTotpEnrollment = async () => {
+    stepLabel.textContent = '03 / Authenticator';
+    setFeedback('인증 앱 등록 정보를 생성하고 있습니다.');
+    const { data: factors, error: factorsError } = await client.auth.mfa.listFactors();
+    if (factorsError) throw factorsError;
+    const unverified = (factors.all || []).filter((factor) => factor.status === 'unverified');
+    await Promise.all(unverified.map((factor) => client.auth.mfa.unenroll({ factorId: factor.id })));
+    const { data, error } = await client.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: 'THE VAULT',
+    });
+    if (error) throw error;
+    pendingTotpFactorId = data.id;
+    totpQr.src = data.totp.qr_code;
+    totpSecret.textContent = data.totp.secret;
+    showOnlyPanel(totpSetupPanel);
+    setFeedback('QR 코드를 스캔한 뒤 인증 앱의 현재 6자리 코드를 입력하세요.');
+  };
+
+  const continueRemoteSession = async (session) => {
+    activeSession = session;
+    const { data: factors, error } = await client.auth.mfa.listFactors();
+    if (error) throw error;
+    const verifiedFactor = (factors.totp || []).find((factor) => factor.status === 'verified');
+    if (!verifiedFactor) {
+      showOnlyPanel(passwordPanel);
+      stepLabel.textContent = '02 / Password';
+      setFeedback('최초 로그인입니다. 임시 비밀번호를 변경하세요.');
+      return;
+    }
+
+    const { data: assurance, error: assuranceError } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assuranceError) throw assuranceError;
+    if (assurance.currentLevel !== 'aal2') {
+      pendingTotpFactorId = verifiedFactor.id;
+      showOnlyPanel(totpChallengePanel);
+      stepLabel.textContent = '02 / Verification';
+      setFeedback('등록한 인증 앱의 현재 6자리 코드를 입력하세요.');
+      return;
+    }
+
+    await completeRemoteIdentity(session);
   };
 
   const initializeRemote = async () => {
@@ -282,11 +354,11 @@
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
     if (data.session) {
-      await completeRemoteIdentity(data.session);
+      await continueRemoteSession(data.session);
       return;
     }
     authPanel.hidden = false;
-    setFeedback('휴대폰 번호로 로그인하거나 새 VAULT ID 가입을 신청하세요.');
+    setFeedback('관리자가 발급한 VAULT ID와 비밀번호를 입력하세요.');
   };
 
   const initializeLocal = async () => {
@@ -313,13 +385,11 @@
         candidate.setAttribute('aria-selected', String(active));
       });
       const signingUp = authMode === 'signup';
-      signupField.hidden = !signingUp;
-      authForm.elements.vaultId.required = signingUp;
-      authForm.elements.password.autocomplete = signingUp ? 'new-password' : 'current-password';
-      authSubmit.firstChild.textContent = signingUp ? '가입 신청 ' : '로그인 ';
+      authForm.hidden = signingUp;
+      accessNote.hidden = !signingUp;
       setFeedback(signingUp
-        ? '실명은 수집하지 않습니다. 휴대폰 인증 후 VAULT ID가 활성화됩니다.'
-        : '등록한 휴대폰 번호와 비밀번호를 입력하세요.');
+        ? '실명·이메일·휴대폰 번호를 수집하지 않는 초대 전용 방식입니다.'
+        : '관리자가 발급한 VAULT ID와 비밀번호를 입력하세요.');
     });
   });
 
@@ -327,58 +397,77 @@
     event.preventDefault();
     const formData = new FormData(authForm);
     setBusy(authForm, true);
-    setFeedback(authMode === 'signup' ? '계정을 생성하고 있습니다.' : '계정을 확인하고 있습니다.');
-    const phone = String(formData.get('phone') || '').replace(/[\s()-]/g, '');
+    setFeedback('계정을 확인하고 있습니다.');
+    const vaultId = String(formData.get('vaultId') || '').trim().toLowerCase();
     const password = String(formData.get('password') || '');
     try {
-      if (authMode === 'signup') {
-        const vaultId = String(formData.get('vaultId') || '').trim().toLowerCase();
-        const { data, error } = await client.auth.signUp({
-          phone,
-          password,
-          options: { channel: 'sms', data: { vault_id: vaultId } },
-        });
-        if (error) throw error;
-        if (!data.session) {
-          pendingPhone = phone;
-          authPanel.hidden = true;
-          otpPanel.hidden = false;
-          stepLabel.textContent = '02 / Phone';
-          setFeedback('6자리 일회용 인증번호를 문자로 보냈습니다.');
-          return;
-        }
-        await completeRemoteIdentity(data.session);
-      } else {
-        const { data, error } = await client.auth.signInWithPassword({ phone, password });
-        if (error) throw error;
-        await completeRemoteIdentity(data.session);
-      }
+      const { data, error } = await client.auth.signInWithPassword({
+        email: toInternalEmail(vaultId),
+        password,
+      });
+      if (error) throw error;
+      await continueRemoteSession(data.session);
     } catch (error) {
-      setFeedback(error.message || '인증을 완료하지 못했습니다.', true);
+      setFeedback(error.message === 'Invalid login credentials'
+        ? 'VAULT ID 또는 비밀번호가 올바르지 않습니다.'
+        : (error.message || '인증을 완료하지 못했습니다.'), true);
     } finally {
       setBusy(authForm, false);
     }
   });
 
-  otpForm?.addEventListener('submit', async (event) => {
+  passwordForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const formData = new FormData(otpForm);
-    setBusy(otpForm, true);
-    setFeedback('휴대폰 인증번호를 확인하고 있습니다.');
+    const formData = new FormData(passwordForm);
+    const newPassword = String(formData.get('newPassword') || '');
+    const confirmPassword = String(formData.get('confirmPassword') || '');
+    if (newPassword !== confirmPassword) {
+      setFeedback('새 비밀번호가 서로 일치하지 않습니다.', true);
+      return;
+    }
+    setBusy(passwordForm, true);
+    setFeedback('새 비밀번호를 적용하고 있습니다.');
     try {
-      const { data, error } = await client.auth.verifyOtp({
-        phone: pendingPhone,
-        token: String(formData.get('token') || '').trim(),
-        type: 'sms',
+      const { error } = await client.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      passwordForm.reset();
+      await beginTotpEnrollment();
+    } catch (error) {
+      setFeedback(error.message || '비밀번호를 변경하지 못했습니다.', true);
+    } finally {
+      setBusy(passwordForm, false);
+    }
+  });
+
+  const verifyTotp = async (form, next) => {
+    const formData = new FormData(form);
+    setBusy(form, true);
+    setFeedback('인증 앱 코드를 확인하고 있습니다.');
+    try {
+      const { error } = await client.auth.mfa.challengeAndVerify({
+        factorId: pendingTotpFactorId,
+        code: String(formData.get('code') || '').trim(),
       });
       if (error) throw error;
-      otpPanel.hidden = true;
-      await completeRemoteIdentity(data.session);
+      form.reset();
+      const { data, error: sessionError } = await client.auth.getSession();
+      if (sessionError) throw sessionError;
+      await next(data.session);
     } catch (error) {
-      setFeedback(error.message || '인증번호를 확인하지 못했습니다.', true);
+      setFeedback(error.message || '인증 앱 코드를 확인하지 못했습니다.', true);
     } finally {
-      setBusy(otpForm, false);
+      setBusy(form, false);
     }
+  };
+
+  totpSetupForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    verifyTotp(totpSetupForm, completeRemoteIdentity);
+  });
+
+  totpChallengeForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    verifyTotp(totpChallengeForm, completeRemoteIdentity);
   });
 
   organizationForm?.addEventListener('submit', async (event) => {
