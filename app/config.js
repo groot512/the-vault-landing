@@ -6,6 +6,6 @@
  * Empty values keep the Trust Lab in Local Preview mode.
  */
 window.VAULT_CONFIG = Object.freeze({
-  supabaseUrl: '',
-  supabasePublishableKey: '',
+  supabaseUrl: 'https://wbereepcsltlwckimfcv.supabase.co',
+  supabasePublishableKey: 'sb_publishable_z11nbFjNa5GrdoM_YcNy3Q_9nVwNGiX',
 });
