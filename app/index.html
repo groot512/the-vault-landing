@@ -16,13 +16,13 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="app.css?v=260825-1">
+    <link rel="stylesheet" href="app.css?v=260825-2">
     <link rel="stylesheet" href="../navigation.css?v=260815-1">
     <script src="../i18n.js?v=260824-3" defer></script>
     <script src="config.js?v=260820-1" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
-    <script src="identity.js?v=260825-1" defer></script>
-    <script src="app.js?v=260825-1" defer></script>
+    <script src="identity.js?v=260825-2" defer></script>
+    <script src="app.js?v=260825-2" defer></script>
     <script src="../navigation.js?v=260815-1" defer></script>
   </head>
   <body>
@@ -392,6 +392,20 @@
               </dl>
               <p data-ko="이 창을 닫으면 비밀번호를 다시 조회할 수 없습니다." data-en="The password cannot be retrieved after this panel is closed.">이 창을 닫으면 비밀번호를 다시 조회할 수 없습니다.</p>
             </section>
+
+            <section class="member-register" data-member-register aria-labelledby="member-register-title">
+              <header>
+                <div>
+                  <p data-ko="조직 구성원" data-en="Organization members">조직 구성원</p>
+                  <h3 id="member-register-title" data-ko="접근 상태" data-en="Access state">접근 상태</h3>
+                </div>
+                <button type="button" data-member-refresh data-ko="새로고침" data-en="Refresh">새로고침</button>
+              </header>
+              <p class="member-feedback" data-member-feedback role="status" aria-live="polite"></p>
+              <div class="member-list" data-member-list aria-live="polite">
+                <p class="member-list__empty" data-ko="관리자 화면을 열면 구성원을 불러옵니다." data-en="Members load when the admin view opens.">관리자 화면을 열면 구성원을 불러옵니다.</p>
+              </div>
+            </section>
           </div>
 
           <aside class="boundary-panel boundary-panel--note admin-policy">
@@ -404,6 +418,7 @@
               <div><dt data-ko="호출 권한" data-en="Caller">호출 권한</dt><dd>ORGANIZATION ADMIN</dd></div>
               <div><dt data-ko="신원 보증" data-en="Assurance">신원 보증</dt><dd>TOTP / AAL2</dd></div>
               <div><dt data-ko="자격증명 표시" data-en="Credential display">자격증명 표시</dt><dd>ONE TIME</dd></div>
+              <div><dt data-ko="접근 정지" data-en="Suspension">접근 정지</dt><dd>RECOVERABLE</dd></div>
             </dl>
           </aside>
         </section>

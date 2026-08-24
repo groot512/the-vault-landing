@@ -53,7 +53,7 @@
     } catch {
       // The response body is optional; fall back to the client error below.
     }
-    return error?.message || 'Account issuance failed.';
+    return error?.message || 'Server request failed.';
   };
 
   window.vaultIdentity = Object.freeze({
@@ -73,6 +73,23 @@
         throw new Error('발급 결과를 확인하지 못했습니다.');
       }
       return data.account;
+    },
+    manageMembers: async (organizationId, action = 'list', targetUserId = '') => {
+      if (!client || currentIdentity?.mode !== 'SUPABASE') {
+        throw new Error('Supabase 관리자 세션이 필요합니다.');
+      }
+      if (String(currentIdentity.role).toLowerCase() !== 'admin') {
+        throw new Error('조직 관리자만 구성원 접근을 관리할 수 있습니다.');
+      }
+
+      const { data, error } = await client.functions.invoke('manage-vault-members', {
+        body: { organizationId, action, targetUserId },
+      });
+      if (error) throw new Error(await readFunctionError(error));
+      if (action === 'list' && !Array.isArray(data?.members)) {
+        throw new Error('구성원 목록을 확인하지 못했습니다.');
+      }
+      return data;
     },
   });
 
@@ -349,7 +366,19 @@
   };
 
   const continueRemoteSession = async (session) => {
-    activeSession = session;
+    const { data: verified, error: userError } = await client.auth.getUser();
+    const serverUser = verified?.user;
+    const accessSuspended = serverUser?.app_metadata?.vault_access === 'suspended';
+    if (userError || !serverUser || accessSuspended) {
+      await client.auth.signOut();
+      if (accessSuspended || /ban|banned/i.test(userError?.message || '')) {
+        throw new Error('이 계정의 접근이 정지되었습니다. 조직 관리자에게 문의하세요.');
+      }
+      throw userError || new Error('서버에서 로그인 상태를 확인하지 못했습니다.');
+    }
+
+    const verifiedSession = { ...session, user: serverUser };
+    activeSession = verifiedSession;
     const { data: factors, error } = await client.auth.mfa.listFactors();
     if (error) throw error;
     const verifiedFactor = (factors.totp || []).find((factor) => factor.status === 'verified');
@@ -377,7 +406,7 @@
       return;
     }
 
-    await completeRemoteIdentity(session);
+    await completeRemoteIdentity(verifiedSession);
   };
 
   const initializeRemote = async () => {
@@ -449,9 +478,12 @@
       if (error) throw error;
       await continueRemoteSession(data.session);
     } catch (error) {
-      setFeedback(error.message === 'Invalid login credentials'
+      const message = error.message === 'Invalid login credentials'
         ? 'VAULT ID 또는 비밀번호가 올바르지 않습니다.'
-        : (error.message || '인증을 완료하지 못했습니다.'), true);
+        : (/ban|banned/i.test(error.message || '')
+          ? '이 계정의 접근이 정지되었습니다. 조직 관리자에게 문의하세요.'
+          : (error.message || '인증을 완료하지 못했습니다.'));
+      setFeedback(message, true);
     } finally {
       setBusy(authForm, false);
     }
@@ -623,8 +655,14 @@
 
   const start = hasRemoteConfig ? initializeRemote : initializeLocal;
   start().catch((error) => {
+    const accessSuspended = /접근이 정지|ban|banned/i.test(error.message || '');
     setFeedback(error.message || 'Identity 초기화에 실패했습니다.', true);
-    if (hasRemoteConfig) {
+    if (hasRemoteConfig && accessSuspended) {
+      modeLabel.textContent = 'SUPABASE CONNECTED';
+      authBoundary.textContent = 'Supabase Auth + RLS';
+      authReset.hidden = true;
+      showOnlyPanel(authPanel);
+    } else if (hasRemoteConfig) {
       modeLabel.textContent = 'CONNECTION FAILED';
       authBoundary.textContent = 'Unavailable';
     }

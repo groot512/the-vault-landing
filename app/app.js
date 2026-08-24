@@ -25,11 +25,16 @@
   const credentialPassword = document.querySelector('[data-admin-password]');
   const credentialClose = document.querySelector('[data-credential-close]');
   const credentialCopyButtons = [...document.querySelectorAll('[data-copy-credential]')];
+  const memberList = document.querySelector('[data-member-list]');
+  const memberFeedback = document.querySelector('[data-member-feedback]');
+  const memberRefresh = document.querySelector('[data-member-refresh]');
   const vaultItems = new Map();
   let messageKey = null;
   let activeIdentity = null;
   let issuedCredentials = null;
   let adminAccess = false;
+  let memberLoading = false;
+  let memberRecords = [];
   let auditCounter = 0;
 
   const pick = (ko, en) => window.vaultI18n?.pick(ko, en) ?? ko;
@@ -134,6 +139,7 @@
       button.setAttribute('aria-pressed', String(isActive));
     });
     if (viewTitle) viewTitle.textContent = viewNames[permittedName] || permittedName;
+    if (permittedName === 'admin' && adminAccess) void loadMembers();
   };
 
   navButtons.forEach((button) => {
@@ -284,6 +290,156 @@
     return messages[message] || message || '계정을 발급하지 못했습니다.';
   };
 
+  const memberErrorMessage = (message) => {
+    const messages = {
+      'Authenticator assurance level 2 required': '인증 앱 검증을 다시 완료한 뒤 시도하세요.',
+      'Organization administrator required': '조직 관리자만 구성원 접근을 관리할 수 있습니다.',
+      'Unable to verify administrator membership': '관리자 권한을 확인하지 못했습니다.',
+      'Unable to load organization members': '조직 구성원 목록을 불러오지 못했습니다.',
+      'Unable to load member profiles': '구성원 VAULT ID를 불러오지 못했습니다.',
+      'Unable to load member authentication state': '구성원의 로그인 상태를 불러오지 못했습니다.',
+      'Administrators cannot change their own access': '관리자는 자신의 접근을 변경할 수 없습니다.',
+      'Only member access can be changed': '일반 멤버의 접근만 변경할 수 있습니다.',
+      'Unable to update member access': '구성원 접근 상태를 변경하지 못했습니다.',
+    };
+    return messages[message] || message || '구성원 정보를 처리하지 못했습니다.';
+  };
+
+  const formatMemberDate = (value) => {
+    if (!value) return pick('기록 없음', 'No record');
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return pick('기록 없음', 'No record');
+    return new Intl.DateTimeFormat(window.vaultI18n?.current() === 'en' ? 'en-GB' : 'ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  };
+
+  const changeMemberAccess = async (member, action, button) => {
+    const restoring = action === 'restore';
+    const prompt = restoring
+      ? pick(`${member.vaultId}의 접근을 복구할까요?`, `Restore access for ${member.vaultId}?`)
+      : pick(`${member.vaultId}의 로그인을 정지할까요? 계정은 삭제되지 않습니다.`, `Suspend sign-in for ${member.vaultId}? The account will not be deleted.`);
+    if (!window.confirm(prompt)) return;
+
+    button.disabled = true;
+    if (memberRefresh) memberRefresh.disabled = true;
+    memberFeedback?.classList.remove('is-error');
+    setLocalizedText(
+      memberFeedback,
+      restoring ? '접근을 복구하고 있습니다.' : '접근을 정지하고 있습니다.',
+      restoring ? 'Restoring access.' : 'Suspending access.',
+    );
+    try {
+      await window.vaultIdentity.manageMembers(
+        activeIdentity.organization.id,
+        action,
+        member.userId,
+      );
+      addAudit(restoring ? 'MEMBER_ACCESS_RESTORED' : 'MEMBER_ACCESS_SUSPENDED', 'ACCESS OFFICE');
+      await loadMembers(true);
+      setLocalizedText(
+        memberFeedback,
+        restoring ? `${member.vaultId}의 접근을 복구했습니다.` : `${member.vaultId}의 접근을 정지했습니다.`,
+        restoring ? `Access restored for ${member.vaultId}.` : `Access suspended for ${member.vaultId}.`,
+      );
+    } catch (error) {
+      setLocalizedText(memberFeedback, memberErrorMessage(error.message), error.message || 'Member access update failed.');
+      memberFeedback?.classList.add('is-error');
+    } finally {
+      button.disabled = false;
+      if (memberRefresh) memberRefresh.disabled = false;
+    }
+  };
+
+  const renderMembers = () => {
+    if (!memberList) return;
+    if (!memberRecords.length) {
+      const empty = document.createElement('p');
+      empty.className = 'member-list__empty';
+      setLocalizedText(empty, '등록된 구성원이 없습니다.', 'No organization members found.');
+      memberList.replaceChildren(empty);
+      return;
+    }
+
+    const rows = memberRecords.map((member) => {
+      const row = document.createElement('article');
+      row.className = 'member-row';
+
+      const identity = document.createElement('div');
+      identity.className = 'member-row__identity';
+      const vaultId = document.createElement('strong');
+      vaultId.textContent = member.vaultId;
+      vaultId.dataset.noI18n = '';
+      const role = document.createElement('span');
+      role.textContent = String(member.role).toUpperCase();
+      identity.append(vaultId, role);
+
+      const state = document.createElement('div');
+      state.className = `member-row__state is-${member.status}`;
+      const stateLabel = document.createElement('strong');
+      setLocalizedText(
+        stateLabel,
+        member.status === 'suspended' ? '접근 정지' : '활성',
+        member.status === 'suspended' ? 'Suspended' : 'Active',
+      );
+      const dates = document.createElement('span');
+      dates.textContent = pick(
+        `가입 ${formatMemberDate(member.createdAt)} · 최근 로그인 ${formatMemberDate(member.lastSignInAt)}`,
+        `Joined ${formatMemberDate(member.createdAt)} · Last sign-in ${formatMemberDate(member.lastSignInAt)}`,
+      );
+      state.append(stateLabel, dates);
+
+      const action = document.createElement('div');
+      action.className = 'member-row__action';
+      if (String(member.role).toLowerCase() === 'member') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        const nextAction = member.status === 'suspended' ? 'restore' : 'suspend';
+        setLocalizedText(
+          button,
+          nextAction === 'restore' ? '접근 복구' : '접근 정지',
+          nextAction === 'restore' ? 'Restore access' : 'Suspend access',
+        );
+        button.addEventListener('click', () => changeMemberAccess(member, nextAction, button));
+        action.appendChild(button);
+      } else {
+        const protectedLabel = document.createElement('span');
+        setLocalizedText(protectedLabel, '관리자 보호', 'Admin protected');
+        action.appendChild(protectedLabel);
+      }
+
+      row.append(identity, state, action);
+      return row;
+    });
+    memberList.replaceChildren(...rows);
+  };
+
+  const loadMembers = async (force = false) => {
+    if (!adminAccess || !activeIdentity?.organization?.id || memberLoading) return;
+    if (memberRecords.length && !force) {
+      renderMembers();
+      return;
+    }
+    memberLoading = true;
+    if (memberRefresh) memberRefresh.disabled = true;
+    memberFeedback?.classList.remove('is-error');
+    setLocalizedText(memberFeedback, '조직 구성원을 불러오고 있습니다.', 'Loading organization members.');
+    try {
+      const data = await window.vaultIdentity.manageMembers(activeIdentity.organization.id);
+      memberRecords = data.members;
+      renderMembers();
+      setLocalizedText(memberFeedback, `${memberRecords.length}명의 접근 상태를 확인했습니다.`, `${memberRecords.length} access records loaded.`);
+    } catch (error) {
+      setLocalizedText(memberFeedback, memberErrorMessage(error.message), error.message || 'Member list failed.');
+      memberFeedback?.classList.add('is-error');
+    } finally {
+      memberLoading = false;
+      if (memberRefresh) memberRefresh.disabled = false;
+    }
+  };
+
   const copyCredential = async (value) => {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(value);
@@ -321,6 +477,7 @@
       adminFeedback?.classList.remove('is-error');
       setLocalizedText(adminFeedback, '계정이 발급되었습니다. 자격증명은 이 화면에 한 번만 표시됩니다.', 'Account issued. These credentials are shown once.');
       addAudit('ACCOUNT_ISSUED', 'ACCESS OFFICE');
+      await loadMembers(true);
       credentialResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (error) {
       setLocalizedText(adminFeedback, issuanceErrorMessage(error.message), error.message || 'Account issuance failed.');
@@ -351,6 +508,9 @@
     setLocalizedText(adminFeedback, '화면에서 임시 자격증명을 폐기했습니다.', 'Temporary credentials cleared from the screen.');
     adminFeedback?.classList.remove('is-error');
   });
+
+  memberRefresh?.addEventListener('click', () => loadMembers(true));
+  window.addEventListener('vault:languagechange', renderMembers);
 
   fileInput?.addEventListener('change', async () => {
     const [file] = fileInput.files || [];
