@@ -306,6 +306,7 @@
     const { data, error } = await client.auth.mfa.enroll({
       factorType: 'totp',
       friendlyName: 'THE VAULT',
+      issuer: 'THE VAULT',
     });
     if (error) throw error;
     pendingTotpFactorId = data.id;
@@ -321,6 +322,13 @@
     if (error) throw error;
     const verifiedFactor = (factors.totp || []).find((factor) => factor.status === 'verified');
     if (!verifiedFactor) {
+      const unfinishedFactor = (factors.all || []).find((factor) => (
+        factor.factor_type === 'totp' && factor.status === 'unverified'
+      ));
+      if (unfinishedFactor) {
+        await beginTotpEnrollment();
+        return;
+      }
       showOnlyPanel(passwordPanel);
       stepLabel.textContent = '02 / Password';
       setFeedback('최초 로그인입니다. 임시 비밀번호를 변경하세요.');
