@@ -21,6 +21,15 @@
   let activeIdentity = null;
   let auditCounter = 0;
 
+  const pick = (ko, en) => window.vaultI18n?.pick(ko, en) ?? ko;
+
+  const setLocalizedText = (element, ko, en) => {
+    if (!element) return;
+    element.dataset.ko = ko;
+    element.dataset.en = en;
+    element.textContent = pick(ko, en);
+  };
+
   const viewNames = {
     signal: 'TESSERA',
     archive: 'DIGITAL VAULT',
@@ -130,7 +139,7 @@
     const message = document.createElement('article');
     message.className = 'message message--mine';
     const sender = document.createElement('span');
-    sender.textContent = `${activeIdentity?.displayName || 'Verified User'} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+    sender.textContent = `${activeIdentity?.displayName || pick('인증된 사용자', 'Verified User')} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
     const body = document.createElement('p');
     body.textContent = text;
     message.append(sender, body);
@@ -145,21 +154,27 @@
 
     const submit = messageForm.querySelector('button[type="submit"]');
     submit.disabled = true;
-    if (boundaryStatus) boundaryStatus.textContent = 'Encrypting locally';
+    setLocalizedText(boundaryStatus, '브라우저에서 암호화 중', 'Encrypting locally');
 
     try {
       const encrypted = await encryptBytes(messageKey, encoder.encode(plain));
       const decrypted = await decryptBytes(messageKey, encrypted.iv, encrypted.cipher);
       const verified = decoder.decode(decrypted) === plain;
       renderPayload(boundaryOutput, encrypted.payload);
-      if (boundaryStatus) boundaryStatus.textContent = verified
-        ? `Verified / ${encrypted.payload.byteLength} bytes`
-        : 'Verification failed';
+      if (verified) {
+        setLocalizedText(
+          boundaryStatus,
+          `검증 완료 / ${encrypted.payload.byteLength}바이트`,
+          `Verified / ${encrypted.payload.byteLength} bytes`,
+        );
+      } else {
+        setLocalizedText(boundaryStatus, '검증 실패', 'Verification failed');
+      }
       appendMessage(plain);
       messageInput.value = '';
       addAudit('MESSAGE_ENCRYPTED', 'TESSERA');
     } catch (error) {
-      if (boundaryStatus) boundaryStatus.textContent = 'Encryption failed';
+      setLocalizedText(boundaryStatus, '암호화 실패', 'Encryption failed');
       console.error('Message proof failed', error);
     } finally {
       submit.disabled = false;
@@ -195,7 +210,7 @@
       button.disabled = true;
     });
     const state = row.querySelector('[data-item-state]');
-    if (state) state.textContent = 'Key revoked / inaccessible';
+    setLocalizedText(state, '접근키 폐기 / 접근 불가', 'Key revoked / inaccessible');
     addAudit('FILE_KEY_REVOKED', 'DIGITAL VAULT');
   };
 
@@ -207,7 +222,11 @@
     const info = document.createElement('div');
     const state = document.createElement('span');
     state.dataset.itemState = '';
-    state.textContent = `Encrypted / ${formatSize(file.size)}`;
+    setLocalizedText(
+      state,
+      `암호화됨 / ${formatSize(file.size)}`,
+      `Encrypted / ${formatSize(file.size)}`,
+    );
     const name = document.createElement('strong');
     name.textContent = file.name;
     info.append(state, name);
@@ -216,11 +235,15 @@
     actions.className = 'vault-item__actions';
     const download = document.createElement('button');
     download.type = 'button';
-    download.textContent = 'Decrypt';
+    download.dataset.ko = '복호화 다운로드';
+    download.dataset.en = 'Decrypt';
+    download.textContent = pick(download.dataset.ko, download.dataset.en);
     download.addEventListener('click', () => downloadVaultItem(id));
     const revoke = document.createElement('button');
     revoke.type = 'button';
-    revoke.textContent = 'Revoke';
+    revoke.dataset.ko = '접근키 폐기';
+    revoke.dataset.en = 'Revoke';
+    revoke.textContent = pick(revoke.dataset.ko, revoke.dataset.en);
     revoke.addEventListener('click', () => revokeVaultItem(id, row));
     actions.append(download, revoke);
     row.append(info, actions);
@@ -231,12 +254,12 @@
     const [file] = fileInput.files || [];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      if (fileStatus) fileStatus.textContent = 'File exceeds 10 MB';
+      setLocalizedText(fileStatus, '파일이 10MB를 초과합니다', 'File exceeds 10 MB');
       fileInput.value = '';
       return;
     }
 
-    if (fileStatus) fileStatus.textContent = 'Encrypting before upload';
+    setLocalizedText(fileStatus, '업로드 전 암호화 중', 'Encrypting before upload');
     try {
       const key = await createKey();
       const plainBytes = new Uint8Array(await file.arrayBuffer());
@@ -250,11 +273,15 @@
         type: file.type,
       });
       renderPayload(fileOutput, encrypted.payload);
-      if (fileStatus) fileStatus.textContent = `Encrypted / ${formatSize(encrypted.payload.byteLength)}`;
+      setLocalizedText(
+        fileStatus,
+        `암호화됨 / ${formatSize(encrypted.payload.byteLength)}`,
+        `Encrypted / ${formatSize(encrypted.payload.byteLength)}`,
+      );
       appendVaultItem(id, file);
       addAudit('FILE_ENCRYPTED', 'DIGITAL VAULT');
     } catch (error) {
-      if (fileStatus) fileStatus.textContent = 'Encryption failed';
+      setLocalizedText(fileStatus, '암호화 실패', 'Encryption failed');
       console.error('File proof failed', error);
     } finally {
       fileInput.value = '';
@@ -263,7 +290,7 @@
 
   const initialize = async (identity) => {
     if (!window.crypto?.subtle) {
-      if (keyState) keyState.textContent = 'Web Crypto unavailable';
+      setLocalizedText(keyState, 'Web Crypto를 사용할 수 없음', 'Web Crypto unavailable');
       messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
       fileInput?.setAttribute('disabled', '');
       return;
@@ -273,7 +300,11 @@
     const shortDeviceId = identity.device.id.split('-')[0].toUpperCase();
     if (deviceId) deviceId.textContent = `${shortDeviceId} / ${identity.device.fingerprint}`;
     messageKey = await createKey();
-    if (keyState) keyState.textContent = 'Device verified / Session content key ready';
+    setLocalizedText(
+      keyState,
+      '기기 검증 완료 / 세션 콘텐츠 키 준비됨',
+      'Device verified / Session content key ready',
+    );
     messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
     fileInput?.removeAttribute('disabled');
     addAudit('IDENTITY_VERIFIED', identity.mode);
@@ -284,7 +315,7 @@
   else showView('signal');
 
   window.addEventListener('vault:identity-ready', (event) => initialize(event.detail).catch((error) => {
-    if (keyState) keyState.textContent = 'Initialization failed';
+    setLocalizedText(keyState, '초기화 실패', 'Initialization failed');
     console.error('Trust Lab initialization failed', error);
   }), { once: true });
 })();

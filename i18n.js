@@ -163,7 +163,19 @@
     ['민감한 프로젝트 메시지를 입력하세요.', 'Enter a sensitive project message.'],
     ['암호화하여 전송', 'Encrypt and send'],
     ['파일 선택', 'Select file'],
-    ['파일 암호화', 'Encrypt file']
+    ['파일 암호화', 'Encrypt file'],
+    ['복호화 다운로드', 'Decrypt'],
+    ['접근키 폐기', 'Revoke'],
+    ['인증된 사용자', 'Verified User'],
+    ['브라우저에서 암호화 중', 'Encrypting locally'],
+    ['검증 실패', 'Verification failed'],
+    ['암호화 실패', 'Encryption failed'],
+    ['접근키 폐기 / 접근 불가', 'Key revoked / inaccessible'],
+    ['파일이 10MB를 초과합니다', 'File exceeds 10 MB'],
+    ['업로드 전 암호화 중', 'Encrypting before upload'],
+    ['Web Crypto를 사용할 수 없음', 'Web Crypto unavailable'],
+    ['기기 검증 완료 / 세션 콘텐츠 키 준비됨', 'Device verified / Session content key ready'],
+    ['초기화 실패', 'Initialization failed']
   ];
 
   const normalize = (value) => value.replace(/\s+/g, ' ').trim();
