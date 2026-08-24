@@ -26,6 +26,7 @@
   const modeLabel = document.querySelector('[data-identity-mode]');
   const stepLabel = document.querySelector('[data-identity-step]');
   const authBoundary = document.querySelector('[data-auth-boundary]');
+  const authReset = document.querySelector('[data-auth-reset]');
   const signOut = document.querySelector('[data-sign-out]');
   const identityName = document.querySelector('[data-identity-name]');
   const identityOrganization = document.querySelector('[data-identity-organization]');
@@ -362,6 +363,7 @@
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
     if (data.session) {
+      authReset.hidden = false;
       await continueRemoteSession(data.session);
       return;
     }
@@ -573,6 +575,13 @@
       if (currentIdentity?.ownerKey) await deleteDevice(currentIdentity.ownerKey);
       window.localStorage.removeItem(localProfileKey);
     }
+    window.location.reload();
+  });
+
+  authReset?.addEventListener('click', async () => {
+    authReset.disabled = true;
+    setFeedback('현재 인증 세션을 종료하고 있습니다.');
+    if (client) await client.auth.signOut();
     window.location.reload();
   });
 

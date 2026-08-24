@@ -140,6 +140,25 @@ label:has(input:focus-visible) {
   font-weight: 400;
 }
 
+.identity-status > div {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.identity-status button {
+  padding: 0;
+  color: rgb(23 23 20 / 52%);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid currentcolor;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .identity-panel {
   margin: auto 0;
   padding: 3rem 0;

@@ -152,6 +152,8 @@
     ['콘텐츠 없는 이벤트', 'Content-free events'],
     ['신원 확인 대기', 'Identity pending'],
     ['세션 종료', 'End session'],
+    ['로그인부터 다시', 'Restart sign-in'],
+    ['현재 인증 세션을 종료하고 있습니다.', 'Ending the current authentication session.'],
     ['프로토타입 경계', 'Prototype boundary'],
     ['기기', 'Device'],
     ['등록 중', 'Registering'],
