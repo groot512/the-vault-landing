@@ -16,9 +16,20 @@
   const fileStatus = document.querySelector('[data-file-status]');
   const vaultList = document.querySelector('[data-vault-list]');
   const auditLedger = document.querySelector('[data-audit-ledger]');
+  const adminNav = document.querySelector('[data-admin-nav]');
+  const adminIssueForm = document.querySelector('[data-admin-issue-form]');
+  const adminOrganization = document.querySelector('[data-admin-organization]');
+  const adminFeedback = document.querySelector('[data-admin-feedback]');
+  const credentialResult = document.querySelector('[data-credential-result]');
+  const credentialVaultId = document.querySelector('[data-admin-vault-id]');
+  const credentialPassword = document.querySelector('[data-admin-password]');
+  const credentialClose = document.querySelector('[data-credential-close]');
+  const credentialCopyButtons = [...document.querySelectorAll('[data-copy-credential]')];
   const vaultItems = new Map();
   let messageKey = null;
   let activeIdentity = null;
+  let issuedCredentials = null;
+  let adminAccess = false;
   let auditCounter = 0;
 
   const pick = (ko, en) => window.vaultI18n?.pick(ko, en) ?? ko;
@@ -34,6 +45,7 @@
     signal: 'TESSERA',
     archive: 'DIGITAL VAULT',
     audit: 'AUDIT LEDGER',
+    admin: 'ACCESS OFFICE',
   };
 
   const makeId = (length = 8) => {
@@ -107,17 +119,21 @@
   };
 
   const showView = (name) => {
+    const permittedName = name === 'admin' && !adminAccess ? 'signal' : name;
+    if (permittedName !== 'admin' && credentialResult && !credentialResult.hidden) {
+      clearIssuedCredentials();
+    }
     views.forEach((view) => {
-      const isActive = view.dataset.view === name;
+      const isActive = view.dataset.view === permittedName;
       view.hidden = !isActive;
       view.classList.toggle('is-active', isActive);
     });
     navButtons.forEach((button) => {
-      const isActive = button.dataset.viewTarget === name;
+      const isActive = button.dataset.viewTarget === permittedName;
       button.classList.toggle('is-active', isActive);
       button.setAttribute('aria-pressed', String(isActive));
     });
-    if (viewTitle) viewTitle.textContent = viewNames[name] || name;
+    if (viewTitle) viewTitle.textContent = viewNames[permittedName] || permittedName;
   };
 
   navButtons.forEach((button) => {
@@ -250,6 +266,92 @@
     vaultList?.prepend(row);
   };
 
+  const clearIssuedCredentials = () => {
+    issuedCredentials = null;
+    if (credentialVaultId) credentialVaultId.textContent = '';
+    if (credentialPassword) credentialPassword.textContent = '';
+    if (credentialResult) credentialResult.hidden = true;
+  };
+
+  const issuanceErrorMessage = (message) => {
+    const messages = {
+      'Authenticator assurance level 2 required': '인증 앱 검증을 다시 완료한 뒤 시도하세요.',
+      'Organization administrator required': '조직 관리자만 계정을 발급할 수 있습니다.',
+      'Unable to verify administrator membership': '관리자 권한을 확인하지 못했습니다.',
+      'Unable to issue a unique VAULT account': '고유한 VAULT ID를 발급하지 못했습니다. 다시 시도하세요.',
+      'Account issuance could not be completed': '계정과 조직 권한을 함께 생성하지 못했습니다.',
+    };
+    return messages[message] || message || '계정을 발급하지 못했습니다.';
+  };
+
+  const copyCredential = async (value) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+
+    const input = document.createElement('textarea');
+    input.value = value;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    input.remove();
+  };
+
+  adminIssueForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!adminAccess || !activeIdentity?.organization?.id) return;
+
+    const submit = adminIssueForm.querySelector('button[type="submit"]');
+    const controls = adminIssueForm.querySelectorAll('button, input');
+    controls.forEach((control) => { control.disabled = true; });
+    clearIssuedCredentials();
+    adminFeedback?.classList.remove('is-error');
+    setLocalizedText(adminFeedback, '서버에서 임시 자격증명을 생성하고 있습니다.', 'Generating temporary credentials on the server.');
+
+    try {
+      issuedCredentials = await window.vaultIdentity.issueAccount(activeIdentity.organization.id);
+      credentialVaultId.textContent = issuedCredentials.vaultId;
+      credentialPassword.textContent = issuedCredentials.temporaryPassword;
+      credentialResult.hidden = false;
+      adminIssueForm.reset();
+      adminFeedback?.classList.remove('is-error');
+      setLocalizedText(adminFeedback, '계정이 발급되었습니다. 자격증명은 이 화면에 한 번만 표시됩니다.', 'Account issued. These credentials are shown once.');
+      addAudit('ACCOUNT_ISSUED', 'ACCESS OFFICE');
+      credentialResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (error) {
+      setLocalizedText(adminFeedback, issuanceErrorMessage(error.message), error.message || 'Account issuance failed.');
+      adminFeedback?.classList.add('is-error');
+    } finally {
+      controls.forEach((control) => { control.disabled = false; });
+      if (submit) submit.disabled = false;
+    }
+  });
+
+  credentialCopyButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      const value = issuedCredentials?.[button.dataset.copyCredential];
+      if (!value) return;
+      try {
+        await copyCredential(value);
+        setLocalizedText(adminFeedback, '클립보드에 복사했습니다.', 'Copied to clipboard.');
+        adminFeedback?.classList.remove('is-error');
+      } catch {
+        setLocalizedText(adminFeedback, '복사하지 못했습니다. 화면의 값을 직접 기록하세요.', 'Copy failed. Record the value directly from the screen.');
+        adminFeedback?.classList.add('is-error');
+      }
+    });
+  });
+
+  credentialClose?.addEventListener('click', () => {
+    clearIssuedCredentials();
+    setLocalizedText(adminFeedback, '화면에서 임시 자격증명을 폐기했습니다.', 'Temporary credentials cleared from the screen.');
+    adminFeedback?.classList.remove('is-error');
+  });
+
   fileInput?.addEventListener('change', async () => {
     const [file] = fileInput.files || [];
     if (!file) return;
@@ -297,6 +399,9 @@
     }
 
     activeIdentity = identity;
+    adminAccess = identity.mode === 'SUPABASE' && String(identity.role).toLowerCase() === 'admin';
+    if (adminNav) adminNav.hidden = !adminAccess;
+    if (adminOrganization) adminOrganization.textContent = identity.organization.name;
     const shortDeviceId = identity.device.id.split('-')[0].toUpperCase();
     if (deviceId) deviceId.textContent = `${shortDeviceId} / ${identity.device.fingerprint}`;
     messageKey = await createKey();
@@ -309,6 +414,7 @@
     fileInput?.removeAttribute('disabled');
     addAudit('IDENTITY_VERIFIED', identity.mode);
     addAudit('DEVICE_KEY_READY', 'TRUST KERNEL');
+    if (adminAccess && window.location.hash === '#admin') showView('admin');
   };
 
   if (viewNames[window.location.hash.slice(1)]) showHashView();

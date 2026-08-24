@@ -45,6 +45,37 @@
   let activeRecoveryWords = [];
   let recoveryConfirmationIndices = [];
 
+  const readFunctionError = async (error) => {
+    try {
+      const body = await error?.context?.json();
+      if (body?.error) return body.error;
+      if (body?.message) return body.message;
+    } catch {
+      // The response body is optional; fall back to the client error below.
+    }
+    return error?.message || 'Account issuance failed.';
+  };
+
+  window.vaultIdentity = Object.freeze({
+    issueAccount: async (organizationId) => {
+      if (!client || currentIdentity?.mode !== 'SUPABASE') {
+        throw new Error('Supabase 관리자 세션이 필요합니다.');
+      }
+      if (String(currentIdentity.role).toLowerCase() !== 'admin') {
+        throw new Error('조직 관리자만 계정을 발급할 수 있습니다.');
+      }
+
+      const { data, error } = await client.functions.invoke('issue-vault-account', {
+        body: { organizationId },
+      });
+      if (error) throw new Error(await readFunctionError(error));
+      if (!data?.account?.vaultId || !data.account.temporaryPassword) {
+        throw new Error('발급 결과를 확인하지 못했습니다.');
+      }
+      return data.account;
+    },
+  });
+
   const hasRemoteConfig = Boolean(
     config.supabaseUrl
       && config.supabasePublishableKey

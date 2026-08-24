@@ -1041,6 +1041,215 @@ label:has(input:focus-visible) {
   opacity: 0.35;
 }
 
+.view-main--admin {
+  gap: 0;
+}
+
+.admin-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.8fr);
+  gap: 2rem;
+  padding: 2.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.admin-intro p,
+.admin-intro span {
+  margin: 0;
+}
+
+.admin-intro p {
+  max-width: 34rem;
+  font-size: clamp(1.35rem, 2.5vw, 2.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+
+.admin-intro span {
+  align-self: end;
+  color: rgb(242 238 227 / 48%);
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.admin-issue-form {
+  padding: 2.5rem 0;
+}
+
+.admin-issue-form dl {
+  margin: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.admin-issue-form dl div {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.admin-issue-form dt,
+.admin-issue-form dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.admin-issue-form dt {
+  color: rgb(242 238 227 / 42%);
+}
+
+.admin-confirm {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1.25rem 0;
+  color: rgb(242 238 227 / 58%);
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.admin-confirm input {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+  margin: 0.1rem 0 0;
+  accent-color: var(--gold);
+}
+
+.admin-issue-form > button {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  color: var(--charcoal);
+  background: var(--ivory);
+  border: 0;
+  cursor: pointer;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-issue-form > button b {
+  color: var(--gold);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+.admin-issue-form > button:disabled,
+.admin-confirm input:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+
+.admin-feedback {
+  min-height: 1.3rem;
+  margin: 0.8rem 0 0;
+  color: var(--gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.54rem;
+  line-height: 1.45;
+}
+
+.admin-feedback.is-error {
+  color: #d68694;
+}
+
+.credential-result {
+  margin-top: 0.5rem;
+  color: var(--charcoal);
+  background: var(--ivory);
+}
+
+.credential-result > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--rule-dark);
+}
+
+.credential-result > header p,
+.credential-result > header h3 {
+  margin: 0;
+}
+
+.credential-result > header p {
+  color: var(--gold);
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.credential-result > header h3 {
+  margin-top: 0.25rem;
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+.credential-result button {
+  padding: 0;
+  color: rgb(23 23 20 / 58%);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid currentcolor;
+  cursor: pointer;
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.credential-result dl {
+  margin: 0;
+}
+
+.credential-result dl > div {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--rule-dark);
+}
+
+.credential-result dt {
+  color: rgb(23 23 20 / 48%);
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.credential-result dd {
+  display: flex;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+}
+
+.credential-result code {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+}
+
+.credential-result > p {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  color: rgb(23 23 20 / 58%);
+  font-size: 0.65rem;
+}
+
+.admin-policy > p {
+  margin: auto 0 2rem;
+}
+
 .view-main--audit {
   grid-column: 1 / 2;
 }
@@ -1275,6 +1484,16 @@ label:has(input:focus-visible) {
 
   .vault-item {
     grid-template-columns: 1fr;
+  }
+
+  .admin-intro {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-issue-form dl div,
+  .credential-result dl > div {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
   }
 
   .audit-event {

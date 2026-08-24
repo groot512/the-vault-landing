@@ -16,13 +16,13 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="app.css?v=260824-1">
+    <link rel="stylesheet" href="app.css?v=260825-1">
     <link rel="stylesheet" href="../navigation.css?v=260815-1">
     <script src="../i18n.js?v=260824-3" defer></script>
     <script src="config.js?v=260820-1" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
-    <script src="identity.js?v=260824-3" defer></script>
-    <script src="app.js?v=260824-3" defer></script>
+    <script src="identity.js?v=260825-1" defer></script>
+    <script src="app.js?v=260825-1" defer></script>
     <script src="../navigation.js?v=260815-1" defer></script>
   </head>
   <body>
@@ -202,6 +202,11 @@
               <strong>Audit</strong>
               <em>Content-free events</em>
             </button>
+            <button class="lab-nav" type="button" data-view-target="admin" data-admin-nav hidden>
+              <span>04</span>
+              <strong data-ko="계정 발급" data-en="Issue Account">계정 발급</strong>
+              <em data-ko="관리자 전용" data-en="Admin only">관리자 전용</em>
+            </button>
           </nav>
         </div>
 
@@ -334,6 +339,72 @@
               이 화면은 이벤트 유형과 시간만 기록합니다. 메시지 본문과 파일 데이터는 감사 항목에 포함하지 않습니다.
               실제 파일럿에서는 조직 정책, 보존 기간, 무결성 검증을 별도로 설계해야 합니다.
             </p>
+          </aside>
+        </section>
+
+        <section class="lab-view" id="admin" data-view="admin" aria-labelledby="admin-title" hidden>
+          <div class="view-main view-main--admin">
+            <header class="view-title">
+              <p data-ko="04 / 관리자 계정 발급" data-en="04 / Account Issuance">04 / 관리자 계정 발급</p>
+              <h2 id="admin-title">Access<br>Office</h2>
+              <span data-ko="승인된 접근만" data-en="Approved access only">승인된 접근만</span>
+            </header>
+
+            <div class="admin-intro">
+              <p data-ko="사람의 신원을 수집하지 않고 접근 자격만 발급합니다." data-en="Issue access credentials without collecting a person's identity.">사람의 신원을 수집하지 않고 접근 자격만 발급합니다.</p>
+              <span data-ko="발급 즉시 생성되는 VAULT ID와 임시 비밀번호는 이 화면에 한 번만 표시됩니다. 합의된 오프라인 채널로 전달하세요." data-en="The generated VAULT ID and temporary password are shown once. Deliver them through an agreed offline channel.">발급 즉시 생성되는 VAULT ID와 임시 비밀번호는 이 화면에 한 번만 표시됩니다. 합의된 오프라인 채널로 전달하세요.</span>
+            </div>
+
+            <form class="admin-issue-form" data-admin-issue-form>
+              <dl>
+                <div><dt data-ko="조직" data-en="Organization">조직</dt><dd data-admin-organization>—</dd></div>
+                <div><dt data-ko="발급 역할" data-en="Issued role">발급 역할</dt><dd>MEMBER</dd></div>
+                <div><dt data-ko="최초 로그인" data-en="First sign-in">최초 로그인</dt><dd data-ko="비밀번호 변경 + 인증 앱 등록" data-en="Change password + enroll authenticator">비밀번호 변경 + 인증 앱 등록</dd></div>
+              </dl>
+              <label class="admin-confirm">
+                <input type="checkbox" name="confirmed" required>
+                <span data-ko="임시 자격증명을 안전한 오프라인 채널로 한 번만 전달하겠습니다." data-en="I will deliver the temporary credentials once through a secure offline channel.">임시 자격증명을 안전한 오프라인 채널로 한 번만 전달하겠습니다.</span>
+              </label>
+              <button type="submit">
+                <span data-ko="임시 계정 발급" data-en="Issue temporary account">임시 계정 발급</span>
+                <b aria-hidden="true">→</b>
+              </button>
+              <p class="admin-feedback" data-admin-feedback role="status" aria-live="polite"></p>
+            </form>
+
+            <section class="credential-result" data-credential-result aria-labelledby="credential-result-title" hidden>
+              <header>
+                <div>
+                  <p data-ko="한 번만 표시" data-en="Shown once">한 번만 표시</p>
+                  <h3 id="credential-result-title" data-ko="임시 자격증명" data-en="Temporary credentials">임시 자격증명</h3>
+                </div>
+                <button type="button" data-credential-close data-ko="닫고 폐기" data-en="Close and clear">닫고 폐기</button>
+              </header>
+              <dl>
+                <div>
+                  <dt>VAULT ID</dt>
+                  <dd><code data-admin-vault-id data-no-i18n></code><button type="button" data-copy-credential="vaultId" data-ko="복사" data-en="Copy">복사</button></dd>
+                </div>
+                <div>
+                  <dt data-ko="임시 비밀번호" data-en="Temporary password">임시 비밀번호</dt>
+                  <dd><code data-admin-password data-no-i18n></code><button type="button" data-copy-credential="temporaryPassword" data-ko="복사" data-en="Copy">복사</button></dd>
+                </div>
+              </dl>
+              <p data-ko="이 창을 닫으면 비밀번호를 다시 조회할 수 없습니다." data-en="The password cannot be retrieved after this panel is closed.">이 창을 닫으면 비밀번호를 다시 조회할 수 없습니다.</p>
+            </section>
+          </div>
+
+          <aside class="boundary-panel boundary-panel--note admin-policy">
+            <header>
+              <p data-ko="발급 정책" data-en="Issuance policy">발급 정책</p>
+              <span>AAL2 / ADMIN</span>
+            </header>
+            <p data-ko="서버는 인증 앱 검증을 마친 조직 관리자만 허용합니다. 실명·이메일·휴대폰 번호는 입력받지 않으며, 임시 비밀번호 원문은 별도 데이터베이스에 저장하지 않습니다." data-en="The server permits only organization administrators with verified authenticator sessions. No legal name, email, or phone number is collected, and the temporary password is not stored as plaintext in a separate database.">서버는 인증 앱 검증을 마친 조직 관리자만 허용합니다. 실명·이메일·휴대폰 번호는 입력받지 않으며, 임시 비밀번호 원문은 별도 데이터베이스에 저장하지 않습니다.</p>
+            <dl>
+              <div><dt data-ko="호출 권한" data-en="Caller">호출 권한</dt><dd>ORGANIZATION ADMIN</dd></div>
+              <div><dt data-ko="신원 보증" data-en="Assurance">신원 보증</dt><dd>TOTP / AAL2</dd></div>
+              <div><dt data-ko="자격증명 표시" data-en="Credential display">자격증명 표시</dt><dd>ONE TIME</dd></div>
+            </dl>
           </aside>
         </section>
       </section>
