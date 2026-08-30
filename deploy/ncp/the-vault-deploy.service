@@ -1,0 +1,20 @@
+[Unit]
+Description=Deploy THE VAULT frontend from GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=vault-deploy
+Group=vault-deploy
+Environment=HOME=/var/lib/vault-deploy
+Environment=GIT_TERMINAL_PROMPT=0
+ExecStart=/usr/local/sbin/the-vault-auto-deploy
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/the-vault /var/www/the-vault /var/lib/vault-deploy
+
+[Install]
+WantedBy=multi-user.target
