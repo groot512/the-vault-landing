@@ -1772,14 +1772,33 @@ label:has(input:focus-visible) {
   font-size: 0.45rem;
 }
 
-.contact-item > em {
+.contact-item__activity {
+  display: grid;
+  min-width: 1.5rem;
+  justify-items: end;
+}
+
+.contact-item__activity strong {
+  display: grid;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  place-items: center;
+  color: var(--ivory);
+  background: var(--gold);
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.44rem;
+}
+
+.contact-item__activity i {
   width: 0.38rem;
   height: 0.38rem;
   background: var(--gold);
   border-radius: 50%;
 }
 
-.contact-item:disabled > em {
+.contact-item:disabled .contact-item__activity i {
   background: rgb(23 23 20 / 24%);
 }
 

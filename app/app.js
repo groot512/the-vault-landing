@@ -53,6 +53,7 @@
   const vaultItems = new Map();
   let messageKey = null;
   let tesseraContacts = [];
+  let conversationSummaries = new Map();
   let activeContact = null;
   let unsubscribeMessages = null;
   const renderedMessageIds = new Set();
@@ -282,6 +283,19 @@
     { hour: '2-digit', minute: '2-digit', hour12: false },
   ).format(new Date(value));
 
+  const formatConversationTime = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    const today = new Date();
+    const sameDay = date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
+    return new Intl.DateTimeFormat(
+      window.vaultI18n?.current() === 'en' ? 'en-GB' : 'ko-KR',
+      sameDay ? { hour: '2-digit', minute: '2-digit', hour12: false } : { month: '2-digit', day: '2-digit' },
+    ).format(date);
+  };
+
   const receiptLabel = (message) => {
     if (message?.read_at) return pick('읽음', 'Read');
     if (message?.delivered_at) return pick('전달됨', 'Delivered');
@@ -372,6 +386,11 @@
       state,
     });
     receipts.forEach(updateMessageReceipt);
+    if (state === 'read' && receipts.length) {
+      const summary = conversationSummaries.get(activeContact.userId);
+      if (summary) conversationSummaries.set(activeContact.userId, { ...summary, unreadCount: 0 });
+      renderContactDirectory();
+    }
   };
 
   const acknowledgeLoadedConversation = async () => {
@@ -466,7 +485,27 @@
       const existing = people.get(contact.userId);
       if (!existing || (!existing.deviceId && contact.deviceId)) people.set(contact.userId, contact);
     });
-    return [...people.values()];
+    return [...people.values()]
+      .map((contact) => ({
+        ...contact,
+        ...(conversationSummaries.get(contact.userId) || {}),
+      }))
+      .sort((left, right) => {
+        const activity = new Date(right.lastMessageAt || 0) - new Date(left.lastMessageAt || 0);
+        return activity || contactLabel(left).localeCompare(contactLabel(right));
+      });
+  };
+
+  const loadTesseraSummaries = async () => {
+    if (activeIdentity?.mode !== 'SUPABASE') return;
+    const summaries = await window.vaultIdentity.listTesseraConversationSummaries(
+      activeIdentity.organization.id,
+    );
+    conversationSummaries = new Map(summaries.map((summary) => [summary.user_id, {
+      lastMessageAt: summary.last_message_at,
+      unreadCount: Number(summary.unread_count || 0),
+    }]));
+    renderContactDirectory();
   };
 
   const renderContactDirectory = () => {
@@ -504,13 +543,23 @@
       const meta = document.createElement('small');
       name.textContent = contactLabel(contact);
       meta.textContent = contact.deviceId
-        ? `@${contact.vaultId} · ${pick('암호화 가능', 'Encryption ready')}`
+        ? `@${contact.vaultId} · ${contact.lastMessageAt ? formatConversationTime(contact.lastMessageAt) : pick('새 대화', 'New conversation')}`
         : `@${contact.vaultId} · ${pick('기기 미등록', 'No device')}`;
       identity.append(name, meta);
 
-      const state = document.createElement('em');
-      state.setAttribute('aria-label', contact.deviceId ? pick('대화 가능', 'Available') : pick('기기 미등록', 'No device'));
-      button.append(avatar, identity, state);
+      const activity = document.createElement('span');
+      activity.className = 'contact-item__activity';
+      if (contact.unreadCount > 0) {
+        const unread = document.createElement('strong');
+        unread.textContent = contact.unreadCount > 99 ? '99+' : String(contact.unreadCount);
+        unread.setAttribute('aria-label', pick(`안 읽은 메시지 ${contact.unreadCount}개`, `${contact.unreadCount} unread messages`));
+        activity.appendChild(unread);
+      } else {
+        const available = document.createElement('i');
+        available.setAttribute('aria-label', contact.deviceId ? pick('대화 가능', 'Available') : pick('기기 미등록', 'No device'));
+        activity.appendChild(available);
+      }
+      button.append(avatar, identity, activity);
       button.addEventListener('click', () => {
         activeContact = contact;
         contactSelect.value = contact.deviceId;
@@ -531,6 +580,7 @@
       tesseraContacts = (await window.vaultIdentity.listTesseraContacts(
         activeIdentity.organization.id,
       )).map(normalizeContact);
+      await loadTesseraSummaries();
       const previousDeviceId = activeContact?.deviceId || contactSelect.value;
       contactSelect.replaceChildren();
       const messageReadyContacts = tesseraContacts.filter((contact) => contact.deviceId);
@@ -581,18 +631,27 @@
     }
   };
 
+  const handleRealtimeMessage = async (message) => {
+    try {
+      await renderRemoteMessage(message);
+      await loadTesseraSummaries();
+    } catch (error) {
+      console.warn('Conversation summary could not be synchronized:', messageErrorText(error));
+    }
+  };
+
   const startTesseraSubscription = () => {
     unsubscribeMessages?.();
     unsubscribeMessages = window.vaultIdentity.subscribeTesseraMessages(
       activeIdentity.organization.id,
-      (message) => void renderRemoteMessage(message),
+      (message) => void handleRealtimeMessage(message),
       updateMessageReceipt,
       (status) => {
         if (status === 'SUBSCRIBED') {
           if (messageNetwork) messageNetwork.textContent = 'ONLINE / SYNCED';
           messageForm?.querySelector('button[type="submit"]')?.toggleAttribute('disabled', !activeContact);
           if (realtimeSubscribedOnce && activeContact && !reconnectSyncPromise) {
-            reconnectSyncPromise = loadConversation().finally(() => {
+            reconnectSyncPromise = Promise.all([loadConversation(), loadTesseraSummaries()]).finally(() => {
               reconnectSyncPromise = null;
             });
           }
@@ -718,6 +777,7 @@
           ciphertext: bytesToBase64(encrypted.cipher),
         });
         await renderRemoteMessage(stored);
+        await loadTesseraSummaries();
         setLocalizedText(
           boundaryStatus,
           `암호문 저장 / ${encrypted.payload.byteLength}바이트`,

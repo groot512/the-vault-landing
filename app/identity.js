@@ -111,6 +111,14 @@
       if (error) throw error;
       return Array.isArray(data) ? data : [];
     },
+    listTesseraConversationSummaries: async (organizationId) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('list_tessera_conversation_summaries', {
+        requested_organization_id: organizationId,
+      });
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    },
     listTesseraMessages: async (organizationId, peerUserId) => {
       await verifyCurrentActor();
       const actorId = currentIdentity.userId;
