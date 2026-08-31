@@ -14,6 +14,7 @@
   const contactSearch = document.querySelector('[data-contact-search]');
   const contactList = document.querySelector('[data-contact-list]');
   const messageFeedback = document.querySelector('[data-message-feedback]');
+  const composerFeedback = document.querySelector('[data-composer-feedback]');
   const messageNetwork = document.querySelector('[data-message-network]');
   const signalSummary = document.querySelector('[data-signal-summary]');
   const tesseraShell = document.querySelector('[data-tessera-shell]');
@@ -222,6 +223,9 @@
   const setMessageFeedback = (ko, en, isError = false) => {
     setLocalizedText(messageFeedback, ko, en);
     messageFeedback?.classList.toggle('is-error', isError);
+    setLocalizedText(composerFeedback, ko, en);
+    if (composerFeedback) composerFeedback.hidden = false;
+    composerFeedback?.classList.toggle('is-error', isError);
   };
 
   const messageErrorText = (error) => {
@@ -231,7 +235,8 @@
         'The account changed in another tab. Use separate browsers or Chrome profiles to test two accounts.',
       );
     }
-    return error?.message || pick('알 수 없는 오류', 'Unknown error');
+    const message = error?.message || pick('알 수 없는 오류', 'Unknown error');
+    return error?.code ? `${message} (${error.code})` : message;
   };
 
   const contactLabel = (contact) => contact?.nickname || contact?.vaultId || pick('알 수 없는 사용자', 'Unknown user');
@@ -638,7 +643,12 @@
         `Message could not be sent: ${messageErrorText(error)}`,
         true,
       );
-      console.error('Message operation failed', error);
+      console.error('Message operation failed:', JSON.stringify({
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      }));
     } finally {
       submit.disabled = activeIdentity?.mode === 'SUPABASE' && !activeContact;
       messageInput?.focus();

@@ -1849,6 +1849,19 @@ label:has(input:focus-visible) {
   resize: none;
 }
 
+.composer-feedback {
+  padding: 0.65rem 0;
+  margin: 0;
+  color: rgb(242 238 227 / 58%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.52rem;
+  line-height: 1.5;
+}
+
+.composer-feedback.is-error {
+  color: #d9876f;
+}
+
 .tessera-security {
   position: absolute;
   z-index: 4;
