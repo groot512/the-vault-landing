@@ -1501,6 +1501,388 @@ label:has(input:focus-visible) {
   line-height: 1.7;
 }
 
+.lab-view--tessera {
+  display: block;
+  min-height: calc(100svh - 14.75rem);
+  overflow: hidden;
+}
+
+.tessera-messenger {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(17rem, 23rem) minmax(0, 1fr);
+  min-height: calc(100svh - 14.75rem);
+  background: var(--charcoal);
+}
+
+.tessera-directory {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  color: var(--charcoal);
+  background: var(--ivory);
+  border-right: 1px solid var(--rule-dark);
+}
+
+.tessera-directory__head,
+.conversation-head {
+  display: flex;
+  min-height: 5.5rem;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--rule-dark);
+}
+
+.tessera-directory__head {
+  justify-content: space-between;
+}
+
+.tessera-directory__head p,
+.tessera-directory__head h2 {
+  margin: 0;
+}
+
+.tessera-directory__head p,
+.tessera-directory__head > span,
+.conversation-head small,
+.tessera-profile small,
+.nickname-form label,
+.nickname-form p,
+.tessera-search span,
+.tessera-directory__foot,
+.contact-item small {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.06em;
+}
+
+.tessera-directory__head p {
+  color: var(--gold);
+  font-size: 0.48rem;
+}
+
+.tessera-directory__head h2 {
+  margin-top: 0.18rem;
+  font-size: 1.65rem;
+  font-weight: 500;
+  letter-spacing: -0.055em;
+}
+
+.tessera-directory__head > span {
+  color: rgb(23 23 20 / 42%);
+  font-size: 0.48rem;
+}
+
+.tessera-profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--rule-dark);
+}
+
+.tessera-avatar {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--ivory);
+  background: var(--charcoal);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tessera-profile div,
+.conversation-head div {
+  display: grid;
+  min-width: 0;
+  gap: 0.18rem;
+}
+
+.tessera-profile strong,
+.conversation-head strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tessera-profile small,
+.conversation-head small {
+  overflow: hidden;
+  color: rgb(23 23 20 / 48%);
+  font-size: 0.46rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tessera-profile button,
+.nickname-form button,
+.tessera-directory__foot button,
+.conversation-head button,
+.tessera-security button {
+  padding: 0;
+  color: var(--gold);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+}
+
+.nickname-form {
+  padding: 0.9rem 1.25rem 1rem;
+  background: #e7e1d3;
+  border-bottom: 1px solid var(--rule-dark);
+}
+
+.nickname-form label,
+.nickname-form p {
+  display: block;
+  color: rgb(23 23 20 / 52%);
+  font-size: 0.48rem;
+}
+
+.nickname-form > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.nickname-form input,
+.tessera-search input {
+  min-width: 0;
+  padding: 0.7rem 0;
+  color: var(--charcoal);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule-dark);
+  border-radius: 0;
+  outline: 0;
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.nickname-form input:focus,
+.tessera-search input:focus {
+  border-bottom-color: var(--gold);
+}
+
+.nickname-form p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tessera-search {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--rule-dark);
+}
+
+.tessera-search span {
+  color: var(--gold);
+  font-size: 0.48rem;
+}
+
+.tessera-contact-list {
+  min-height: 10rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tessera-contact-list > p {
+  padding: 1.25rem;
+  margin: 0;
+  color: rgb(23 23 20 / 48%);
+  font-size: 0.68rem;
+  line-height: 1.6;
+}
+
+.contact-item {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  color: var(--charcoal);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule-dark);
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.contact-item:hover,
+.contact-item.is-active {
+  background: #e7e1d3;
+}
+
+.contact-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.contact-item__avatar {
+  color: var(--ivory);
+  background: var(--gold);
+}
+
+.contact-item div {
+  display: grid;
+  min-width: 0;
+  gap: 0.18rem;
+}
+
+.contact-item strong,
+.contact-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-item strong {
+  font-size: 0.72rem;
+}
+
+.contact-item small {
+  color: rgb(23 23 20 / 48%);
+  font-size: 0.45rem;
+}
+
+.contact-item > em {
+  width: 0.38rem;
+  height: 0.38rem;
+  background: var(--gold);
+  border-radius: 50%;
+}
+
+.contact-item:disabled > em {
+  background: rgb(23 23 20 / 24%);
+}
+
+.tessera-directory__foot {
+  padding: 0.85rem 1.25rem 1rem;
+  border-top: 1px solid var(--rule-dark);
+}
+
+.tessera-directory__foot p {
+  margin: 0.55rem 0 0;
+  color: rgb(23 23 20 / 50%);
+  font-size: 0.46rem;
+  line-height: 1.45;
+}
+
+.tessera-directory__foot p.is-error {
+  color: #a94f39;
+}
+
+.tessera-conversation {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto minmax(18rem, 1fr) auto;
+  min-height: calc(100svh - 14.75rem);
+}
+
+.conversation-head {
+  color: var(--ivory);
+  border-bottom-color: var(--rule);
+}
+
+.conversation-head .tessera-avatar {
+  color: var(--charcoal);
+  background: var(--ivory);
+}
+
+.conversation-head small {
+  color: rgb(242 238 227 / 44%);
+}
+
+.conversation-head > [data-security-toggle] {
+  margin-left: auto;
+}
+
+.conversation-back {
+  display: none;
+}
+
+.tessera-conversation .message-stream {
+  min-height: 0;
+  padding: 1.5rem clamp(1.25rem, 3vw, 3rem);
+  overflow-y: auto;
+}
+
+.tessera-conversation .message {
+  width: min(72%, 32rem);
+  padding: 0.85rem 1rem;
+}
+
+.tessera-conversation .message--mine {
+  color: var(--charcoal);
+  background: var(--ivory);
+}
+
+.tessera-conversation .message--theirs {
+  color: var(--ivory);
+  background: #20201d;
+}
+
+.tessera-conversation .message--system {
+  justify-self: center;
+  border: 0;
+  text-align: center;
+}
+
+.tessera-conversation .composer {
+  padding: 0 clamp(1.25rem, 3vw, 3rem) 1.25rem;
+}
+
+.tessera-conversation .composer textarea {
+  min-height: 4rem;
+  resize: none;
+}
+
+.tessera-security {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(28rem, 100%);
+  min-height: 0;
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 260ms ease, opacity 180ms ease;
+}
+
+.tessera-security.is-open {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tessera-security > strong {
+  margin-top: 2rem;
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+}
+
+.tessera-security > p {
+  color: rgb(23 23 20 / 48%);
+  font-size: 0.62rem;
+  line-height: 1.6;
+}
+
 @media (max-width: 64rem) {
   .identity-gate {
     grid-template-columns: 1fr 1fr;
@@ -1582,6 +1964,22 @@ label:has(input:focus-visible) {
     min-height: 30rem;
     border-top: 1px solid var(--rule-dark);
     border-left: 0;
+  }
+
+  .lab-view--tessera,
+  .tessera-messenger,
+  .tessera-conversation {
+    min-height: calc(100svh - 18rem);
+  }
+
+  .tessera-messenger {
+    grid-template-columns: minmax(16rem, 19rem) minmax(0, 1fr);
+  }
+
+  .tessera-security {
+    min-height: 100%;
+    border-top: 0;
+    border-left: 1px solid var(--rule-dark);
   }
 }
 
@@ -1677,6 +2075,58 @@ label:has(input:focus-visible) {
 
   .message {
     width: 90%;
+  }
+
+  .workspace-head {
+    display: none;
+  }
+
+  .lab-view--tessera,
+  .tessera-messenger,
+  .tessera-conversation {
+    min-height: calc(100svh - 8.85rem);
+  }
+
+  .tessera-messenger {
+    display: block;
+  }
+
+  .tessera-directory,
+  .tessera-conversation {
+    min-height: calc(100svh - 8.85rem);
+  }
+
+  .tessera-messenger.has-conversation .tessera-directory {
+    display: none;
+  }
+
+  .tessera-messenger:not(.has-conversation) .tessera-conversation {
+    display: none;
+  }
+
+  .conversation-back {
+    display: block;
+  }
+
+  .conversation-head {
+    padding: 0.85rem 1rem;
+  }
+
+  .conversation-head > [data-security-toggle] {
+    font-size: 0;
+  }
+
+  .conversation-head > [data-security-toggle]::after {
+    content: '보안';
+    font-size: 0.5rem;
+  }
+
+  .tessera-conversation .message-stream {
+    padding: 1rem;
+  }
+
+  .tessera-conversation .composer {
+    padding: 0 1rem 1rem;
   }
 
   .contact-strip {

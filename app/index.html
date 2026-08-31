@@ -16,13 +16,13 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="app.css?v=260831-1">
+    <link rel="stylesheet" href="app.css?v=260831-2">
     <link rel="stylesheet" href="../navigation.css?v=260815-1">
-    <script src="../i18n.js?v=260824-3" defer></script>
-    <script src="config.js?v=260820-1" defer></script>
+    <script src="../i18n.js?v=260831-1" defer></script>
+    <script src="config.js?v=260831-2" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
-    <script src="identity.js?v=260831-1" defer></script>
-    <script src="app.js?v=260831-1" defer></script>
+    <script src="identity.js?v=260831-2" defer></script>
+    <script src="app.js?v=260831-2" defer></script>
     <script src="../navigation.js?v=260815-1" defer></script>
   </head>
   <body>
@@ -236,63 +236,106 @@
           </dl>
         </header>
 
-        <section class="lab-view is-active" id="signal" data-view="signal" aria-labelledby="signal-title">
-          <div class="view-main">
-            <header class="view-title">
-              <p>01 / Secure Signal</p>
-              <h2 id="signal-title">Project<br>Orbit</h2>
-              <span data-signal-summary>기기 암호화 · 1:1 MVP</span>
-            </header>
+        <section class="lab-view lab-view--tessera is-active" id="signal" data-view="signal" aria-labelledby="signal-title">
+          <div class="tessera-messenger" data-tessera-shell>
+            <aside class="tessera-directory" aria-label="테세러 대화 목록">
+              <header class="tessera-directory__head">
+                <div>
+                  <p>VAULT / SECURE MESSENGER</p>
+                  <h2 id="signal-title">테세러</h2>
+                </div>
+                <span data-message-network>대기</span>
+              </header>
 
-            <section class="contact-strip" data-contact-strip aria-labelledby="contact-title">
-              <div>
-                <label id="contact-title" for="tessera-contact" data-ko="대화 상대 기기" data-en="Recipient device">대화 상대 기기</label>
-                <select id="tessera-contact" data-contact-select disabled>
-                  <option value="" data-ko="조직 구성원을 불러오는 중" data-en="Loading organization members">조직 구성원을 불러오는 중</option>
-                </select>
+              <section class="tessera-profile" aria-label="내 테세러 프로필">
+                <span class="tessera-avatar" data-self-avatar aria-hidden="true">V</span>
+                <div>
+                  <strong data-self-nickname>별명 미설정</strong>
+                  <small data-self-vault-id>VAULT ID</small>
+                </div>
+                <button type="button" data-nickname-toggle aria-expanded="false">편집</button>
+              </section>
+
+              <form class="nickname-form" data-nickname-form hidden>
+                <label for="tessera-nickname">대화에 표시할 별명</label>
+                <div>
+                  <input id="tessera-nickname" name="nickname" minlength="2" maxlength="24" autocomplete="off" placeholder="2~24자 별명" required>
+                  <button type="submit">저장</button>
+                </div>
+                <p>VAULT ID는 바뀌지 않으며 별명과 함께 표시됩니다.</p>
+              </form>
+
+              <label class="tessera-search" for="tessera-contact-search">
+                <span>사람 찾기</span>
+                <input id="tessera-contact-search" type="search" data-contact-search placeholder="VAULT ID 또는 별명 검색" autocomplete="off">
+              </label>
+
+              <select id="tessera-contact" data-contact-select disabled hidden aria-hidden="true">
+                <option value="">조직 구성원을 불러오는 중</option>
+              </select>
+
+              <div class="tessera-contact-list" data-contact-list aria-live="polite">
+                <p>조직 구성원을 불러오고 있습니다.</p>
               </div>
-              <button type="button" data-contact-refresh disabled data-ko="구성원 새로고침" data-en="Refresh members">구성원 새로고침</button>
-              <p data-message-feedback role="status" aria-live="polite">인증과 기기 키 준비를 기다리고 있습니다.</p>
-            </section>
 
-            <div class="message-stream" data-message-stream aria-live="polite">
-              <article class="message message--system">
-                <span>Trust Kernel</span>
-                <p>상대 기기를 선택하면 서버의 암호문을 이 기기에서 복호화합니다.</p>
-              </article>
+              <footer class="tessera-directory__foot">
+                <button type="button" data-contact-refresh disabled>목록 새로고침</button>
+                <p data-message-feedback role="status" aria-live="polite">인증과 기기 키 준비를 기다리고 있습니다.</p>
+              </footer>
+            </aside>
+
+            <div class="tessera-conversation" data-conversation-panel>
+              <header class="conversation-head">
+                <button type="button" class="conversation-back" data-conversation-back aria-label="대화 목록으로 돌아가기">←</button>
+                <span class="tessera-avatar" data-contact-avatar aria-hidden="true">T</span>
+                <div>
+                  <strong data-contact-name>대화를 선택하세요</strong>
+                  <small data-contact-meta>같은 조직의 구성원을 선택하면 대화를 시작할 수 있습니다.</small>
+                </div>
+                <button type="button" data-security-toggle aria-expanded="false">보안 상세</button>
+              </header>
+
+              <div class="message-stream" data-message-stream aria-live="polite">
+                <article class="message message--system">
+                  <span>테세러</span>
+                  <p>왼쪽 목록에서 대화할 사람을 선택하세요.</p>
+                </article>
+              </div>
+
+              <form class="composer" data-message-form>
+                <label class="sr-only" for="message-input">암호화할 메시지</label>
+                <textarea
+                  id="message-input"
+                  name="message"
+                  rows="2"
+                  placeholder="메시지를 입력하세요."
+                  maxlength="8000"
+                  required
+                ></textarea>
+                <div>
+                  <span>종단간 암호화 · 평문 미저장</span>
+                  <button type="submit" disabled><span>보내기</span> <b aria-hidden="true">↑</b></button>
+                </div>
+              </form>
             </div>
 
-            <form class="composer" data-message-form>
-              <label for="message-input" data-ko="암호화할 메시지" data-en="Message to encrypt">암호화할 메시지</label>
-              <textarea
-                id="message-input"
-                name="message"
-                rows="3"
-                placeholder="민감한 프로젝트 메시지를 입력하세요."
-                maxlength="8000"
-                required
-              ></textarea>
-              <div>
-                <span data-ko="평문은 이 탭을 벗어나지 않습니다" data-en="Plaintext stays in this tab">평문은 이 탭을 벗어나지 않습니다</span>
-                <button type="submit" disabled><span data-ko="암호화 전송" data-en="Encrypt &amp; send">암호화 전송</span> <b aria-hidden="true">→</b></button>
+            <aside class="boundary-panel tessera-security" data-security-panel aria-label="암호화 상세 정보">
+              <header>
+                <p>Security detail</p>
+                <button type="button" data-security-close aria-label="보안 상세 닫기">닫기</button>
+              </header>
+              <strong>메시지 내용은 이 기기에서 암호화됩니다.</strong>
+              <p data-signal-summary>기기 암호화 · 1:1 MVP</p>
+              <div class="boundary-panel__cipher" data-boundary-output>
+                전송 후 서버에 저장되는 암호문의 일부가 표시됩니다.
               </div>
-            </form>
+              <dl>
+                <div><dt>상태</dt><dd data-boundary-status>대기</dd></div>
+                <div><dt>알고리즘</dt><dd>ECDH + HKDF + AES-GCM</dd></div>
+                <div><dt>평문 로그</dt><dd>없음</dd></div>
+              </dl>
+            </aside>
           </div>
-
-          <aside class="boundary-panel" aria-label="암호화 경계 검사기">
-            <header>
-              <p>Boundary Inspector</p>
-              <span data-boundary-status>Waiting</span>
-            </header>
-            <div class="boundary-panel__cipher" data-boundary-output>
-              메시지를 전송하면 네트워크 경계에 전달될 암호화 payload가 여기에 표시됩니다.
-            </div>
-            <dl>
-              <div><dt>Network</dt><dd data-message-network>대기</dd></div>
-              <div><dt>Algorithm</dt><dd>ECDH + HKDF + AES-GCM</dd></div>
-              <div><dt>Plaintext log</dt><dd>None</dd></div>
-            </dl>
-          </aside>
         </section>
 
         <section class="lab-view" id="archive" data-view="archive" aria-labelledby="archive-title" hidden>

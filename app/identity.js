@@ -56,6 +56,18 @@
     return error?.message || 'Server request failed.';
   };
 
+  const verifyCurrentActor = async () => {
+    if (!client || currentIdentity?.mode !== 'SUPABASE') {
+      throw new Error('Supabase 사용자 세션이 필요합니다.');
+    }
+    const { data, error } = await client.auth.getUser();
+    if (error) throw error;
+    if (!data.user || data.user.id !== currentIdentity.userId) {
+      throw new Error('SESSION_CONFLICT');
+    }
+    return data.user;
+  };
+
   window.vaultIdentity = Object.freeze({
     issueAccount: async (organizationId) => {
       if (!client || currentIdentity?.mode !== 'SUPABASE') {
@@ -92,19 +104,15 @@
       return data;
     },
     listTesseraContacts: async (organizationId) => {
-      if (!client || currentIdentity?.mode !== 'SUPABASE') {
-        throw new Error('Supabase 사용자 세션이 필요합니다.');
-      }
-      const { data, error } = await client.rpc('list_tessera_contacts', {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('list_tessera_directory', {
         requested_organization_id: organizationId,
       });
       if (error) throw error;
       return Array.isArray(data) ? data : [];
     },
     listTesseraMessages: async (organizationId, peerUserId) => {
-      if (!client || currentIdentity?.mode !== 'SUPABASE') {
-        throw new Error('Supabase 사용자 세션이 필요합니다.');
-      }
+      await verifyCurrentActor();
       const actorId = currentIdentity.userId;
       const participants = [actorId, peerUserId];
       const { data, error } = await client
@@ -119,15 +127,25 @@
       return (data || []).reverse();
     },
     sendTesseraMessage: async (message) => {
-      if (!client || currentIdentity?.mode !== 'SUPABASE') {
-        throw new Error('Supabase 사용자 세션이 필요합니다.');
-      }
+      await verifyCurrentActor();
       const { data, error } = await client
         .from('tessera_messages')
         .insert(message)
         .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at')
         .single();
       if (error) throw error;
+      return data;
+    },
+    setTesseraNickname: async (nickname) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('set_tessera_nickname', {
+        requested_nickname: nickname,
+      });
+      if (error) throw error;
+      currentIdentity.nickname = data;
+      currentIdentity.displayName = data || currentIdentity.vaultId;
+      identityName.textContent = currentIdentity.displayName;
+      workspaceIdentity.textContent = `${currentIdentity.displayName} / ${currentIdentity.organization.name}`;
       return data;
     },
     subscribeTesseraMessages: (organizationId, onInsert, onStatus) => {
@@ -365,7 +383,7 @@
   const loadProfile = async (userId) => {
     const { data, error } = await client
       .from('profiles')
-      .select('vault_id')
+      .select('vault_id, nickname')
       .eq('id', userId)
       .single();
     if (error) throw error;
@@ -390,7 +408,9 @@
     const identity = {
       mode: 'SUPABASE',
       userId: session.user.id,
-      displayName: profile.vault_id,
+      vaultId: profile.vault_id,
+      nickname: profile.nickname,
+      displayName: profile.nickname || profile.vault_id,
       organization: membership.organizations,
       role: membership.role,
       device,
@@ -471,6 +491,12 @@
         persistSession: true,
         detectSessionInUrl: true,
       },
+    });
+    client.auth.onAuthStateChange((_event, session) => {
+      if (!currentIdentity?.userId) return;
+      if (!session?.user || session.user.id !== currentIdentity.userId) {
+        window.dispatchEvent(new CustomEvent('vault:identity-conflict'));
+      }
     });
     modeLabel.textContent = 'SUPABASE CONNECTED';
     authBoundary.textContent = 'Supabase Auth + RLS';
@@ -625,6 +651,8 @@
     const saved = {
       ownerKey: `local:${window.crypto.randomUUID()}`,
       userId: null,
+      vaultId: String(formData.get('vaultId') || '').trim().toLowerCase(),
+      nickname: null,
       displayName: String(formData.get('vaultId') || '').trim().toLowerCase(),
       organization: {
         id: null,

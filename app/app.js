@@ -11,9 +11,25 @@
   const messageInput = document.querySelector('#message-input');
   const contactSelect = document.querySelector('[data-contact-select]');
   const contactRefresh = document.querySelector('[data-contact-refresh]');
+  const contactSearch = document.querySelector('[data-contact-search]');
+  const contactList = document.querySelector('[data-contact-list]');
   const messageFeedback = document.querySelector('[data-message-feedback]');
   const messageNetwork = document.querySelector('[data-message-network]');
   const signalSummary = document.querySelector('[data-signal-summary]');
+  const tesseraShell = document.querySelector('[data-tessera-shell]');
+  const selfNickname = document.querySelector('[data-self-nickname]');
+  const selfVaultId = document.querySelector('[data-self-vault-id]');
+  const selfAvatar = document.querySelector('[data-self-avatar]');
+  const nicknameToggle = document.querySelector('[data-nickname-toggle]');
+  const nicknameForm = document.querySelector('[data-nickname-form]');
+  const nicknameInput = document.querySelector('#tessera-nickname');
+  const contactName = document.querySelector('[data-contact-name]');
+  const contactMeta = document.querySelector('[data-contact-meta]');
+  const contactAvatar = document.querySelector('[data-contact-avatar]');
+  const conversationBack = document.querySelector('[data-conversation-back]');
+  const securityToggle = document.querySelector('[data-security-toggle]');
+  const securityClose = document.querySelector('[data-security-close]');
+  const securityPanel = document.querySelector('[data-security-panel]');
   const boundaryOutput = document.querySelector('[data-boundary-output]');
   const boundaryStatus = document.querySelector('[data-boundary-status]');
   const fileInput = document.querySelector('[data-file-input]');
@@ -208,6 +224,51 @@
     messageFeedback?.classList.toggle('is-error', isError);
   };
 
+  const messageErrorText = (error) => {
+    if (error?.message === 'SESSION_CONFLICT') {
+      return pick(
+        '다른 탭에서 로그인 계정이 바뀌었습니다. 서로 다른 계정 테스트는 다른 브라우저나 Chrome 프로필을 사용하세요.',
+        'The account changed in another tab. Use separate browsers or Chrome profiles to test two accounts.',
+      );
+    }
+    return error?.message || pick('알 수 없는 오류', 'Unknown error');
+  };
+
+  const contactLabel = (contact) => contact?.nickname || contact?.vaultId || pick('알 수 없는 사용자', 'Unknown user');
+
+  const avatarLetter = (value) => [...String(value || 'V').trim()][0]?.toUpperCase() || 'V';
+
+  const renderSelfProfile = () => {
+    const vaultId = activeIdentity?.vaultId || activeIdentity?.displayName || 'VAULT ID';
+    const nickname = activeIdentity?.nickname || pick('별명 미설정', 'Nickname not set');
+    if (selfNickname) selfNickname.textContent = nickname;
+    if (selfVaultId) selfVaultId.textContent = `@${vaultId}`;
+    if (selfAvatar) selfAvatar.textContent = avatarLetter(activeIdentity?.nickname || vaultId);
+    if (nicknameInput) nicknameInput.value = activeIdentity?.nickname || '';
+  };
+
+  const renderConversationHead = () => {
+    if (!activeContact) {
+      setLocalizedText(contactName, '대화를 선택하세요', 'Choose a conversation');
+      setLocalizedText(
+        contactMeta,
+        '같은 조직의 구성원을 선택하면 대화를 시작할 수 있습니다.',
+        'Choose a member in your organization to start messaging.',
+      );
+      if (contactAvatar) contactAvatar.textContent = 'T';
+      tesseraShell?.classList.remove('has-conversation');
+      return;
+    }
+    if (contactName) contactName.textContent = contactLabel(activeContact);
+    if (contactMeta) {
+      contactMeta.textContent = activeContact.deviceId
+        ? `@${activeContact.vaultId} · ${activeContact.fingerprint}`
+        : `@${activeContact.vaultId} · ${pick('기기 미등록', 'No registered device')}`;
+    }
+    if (contactAvatar) contactAvatar.textContent = avatarLetter(contactLabel(activeContact));
+    tesseraShell?.classList.add('has-conversation');
+  };
+
   const formatMessageTime = (value = new Date()) => new Intl.DateTimeFormat(
     window.vaultI18n?.current() === 'en' ? 'en-GB' : 'ko-KR',
     { hour: '2-digit', minute: '2-digit', hour12: false },
@@ -310,8 +371,8 @@
       );
     } catch (error) {
       setMessageFeedback(
-        `대화를 불러오지 못했습니다: ${error.message}`,
-        `Conversation failed to load: ${error.message}`,
+        `대화를 불러오지 못했습니다: ${messageErrorText(error)}`,
+        `Conversation failed to load: ${messageErrorText(error)}`,
         true,
       );
     }
@@ -320,11 +381,74 @@
   const normalizeContact = (contact) => ({
     userId: contact.user_id,
     vaultId: contact.vault_id,
+    nickname: contact.nickname,
     deviceId: contact.device_id,
     publicKeyJwk: contact.public_key_jwk,
     fingerprint: contact.fingerprint,
     lastSeenAt: contact.last_seen_at,
   });
+
+  const directoryPeople = () => {
+    const people = new Map();
+    tesseraContacts.forEach((contact) => {
+      const existing = people.get(contact.userId);
+      if (!existing || (!existing.deviceId && contact.deviceId)) people.set(contact.userId, contact);
+    });
+    return [...people.values()];
+  };
+
+  const renderContactDirectory = () => {
+    if (!contactList) return;
+    const query = String(contactSearch?.value || '').trim().toLocaleLowerCase();
+    const matches = directoryPeople().filter((contact) => (
+      !query
+      || contact.vaultId.toLocaleLowerCase().includes(query)
+      || String(contact.nickname || '').toLocaleLowerCase().includes(query)
+    ));
+    contactList.replaceChildren();
+    if (!matches.length) {
+      const empty = document.createElement('p');
+      empty.textContent = query
+        ? pick('검색 결과가 없습니다.', 'No matching people found.')
+        : pick('같은 조직의 다른 구성원이 없습니다.', 'No other members in this organization.');
+      contactList.appendChild(empty);
+      return;
+    }
+    matches.forEach((contact) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'contact-item';
+      button.disabled = !contact.deviceId;
+      button.classList.toggle('is-active', activeContact?.userId === contact.userId);
+      button.setAttribute('aria-pressed', String(activeContact?.userId === contact.userId));
+
+      const avatar = document.createElement('span');
+      avatar.className = 'tessera-avatar contact-item__avatar';
+      avatar.textContent = avatarLetter(contactLabel(contact));
+      avatar.setAttribute('aria-hidden', 'true');
+
+      const identity = document.createElement('div');
+      const name = document.createElement('strong');
+      const meta = document.createElement('small');
+      name.textContent = contactLabel(contact);
+      meta.textContent = contact.deviceId
+        ? `@${contact.vaultId} · ${pick('암호화 가능', 'Encryption ready')}`
+        : `@${contact.vaultId} · ${pick('기기 미등록', 'No device')}`;
+      identity.append(name, meta);
+
+      const state = document.createElement('em');
+      state.setAttribute('aria-label', contact.deviceId ? pick('대화 가능', 'Available') : pick('기기 미등록', 'No device'));
+      button.append(avatar, identity, state);
+      button.addEventListener('click', () => {
+        activeContact = contact;
+        contactSelect.value = contact.deviceId;
+        renderContactDirectory();
+        renderConversationHead();
+        void loadConversation();
+      });
+      contactList.appendChild(button);
+    });
+  };
 
   const loadTesseraContacts = async () => {
     if (activeIdentity?.mode !== 'SUPABASE') return;
@@ -337,38 +461,47 @@
       )).map(normalizeContact);
       const previousDeviceId = activeContact?.deviceId || contactSelect.value;
       contactSelect.replaceChildren();
-      if (!tesseraContacts.length) {
+      const messageReadyContacts = tesseraContacts.filter((contact) => contact.deviceId);
+      if (!messageReadyContacts.length) {
         const option = document.createElement('option');
         option.value = '';
-        option.textContent = pick('활성 기기가 있는 다른 구성원이 없습니다', 'No other member has an active device');
+        option.textContent = pick('대화 가능한 구성원 기기가 없습니다', 'No message-ready member device');
         contactSelect.appendChild(option);
         activeContact = null;
+        renderContactDirectory();
+        renderConversationHead();
         messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
         setMessageFeedback(
-          '다른 구성원이 로그인해 기기를 등록하면 대화를 시작할 수 있습니다.',
-          'Another member must sign in and register a device before messaging.',
+          directoryPeople().length
+            ? '구성원은 보이지만 등록된 기기가 없습니다. 상대방이 다시 로그인해 기기를 등록해야 합니다.'
+            : '같은 조직의 다른 구성원이 없습니다.',
+          directoryPeople().length
+            ? 'Members were found, but none has a registered device. Ask them to sign in again.'
+            : 'No other members were found in this organization.',
         );
         return;
       }
-      tesseraContacts.forEach((contact) => {
+      messageReadyContacts.forEach((contact) => {
         const option = document.createElement('option');
         option.value = contact.deviceId;
-        option.textContent = `${contact.vaultId} · ${contact.fingerprint}`;
+        option.textContent = `${contactLabel(contact)} · ${contact.fingerprint}`;
         option.dataset.noI18n = '';
         contactSelect.appendChild(option);
       });
-      contactSelect.value = tesseraContacts.some((contact) => contact.deviceId === previousDeviceId)
+      contactSelect.value = messageReadyContacts.some((contact) => contact.deviceId === previousDeviceId)
         ? previousDeviceId
-        : tesseraContacts[0].deviceId;
+        : messageReadyContacts[0].deviceId;
       activeContact = tesseraContacts.find((contact) => contact.deviceId === contactSelect.value);
       contactSelect.disabled = false;
+      renderContactDirectory();
+      renderConversationHead();
       await loadConversation();
       messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
     } catch (error) {
       messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
       setMessageFeedback(
-        `메시지 기능을 준비하지 못했습니다: ${error.message}`,
-        `Messaging could not be prepared: ${error.message}`,
+        `메시지 기능을 준비하지 못했습니다: ${messageErrorText(error)}`,
+        `Messaging could not be prepared: ${messageErrorText(error)}`,
         true,
       );
     } finally {
@@ -389,10 +522,58 @@
 
   contactSelect?.addEventListener('change', () => {
     activeContact = tesseraContacts.find((contact) => contact.deviceId === contactSelect.value) || null;
+    renderContactDirectory();
+    renderConversationHead();
     void loadConversation();
   });
 
   contactRefresh?.addEventListener('click', () => void loadTesseraContacts());
+  contactSearch?.addEventListener('input', renderContactDirectory);
+
+  conversationBack?.addEventListener('click', () => {
+    tesseraShell?.classList.remove('has-conversation');
+  });
+
+  const setSecurityPanel = (open) => {
+    securityPanel?.classList.toggle('is-open', open);
+    securityToggle?.setAttribute('aria-expanded', String(open));
+  };
+
+  securityToggle?.addEventListener('click', () => {
+    setSecurityPanel(!securityPanel?.classList.contains('is-open'));
+  });
+  securityClose?.addEventListener('click', () => setSecurityPanel(false));
+
+  nicknameToggle?.addEventListener('click', () => {
+    if (activeIdentity?.mode !== 'SUPABASE') return;
+    const open = nicknameForm?.hidden ?? true;
+    nicknameForm.hidden = !open;
+    nicknameToggle.setAttribute('aria-expanded', String(open));
+    if (open) nicknameInput?.focus();
+  });
+
+  nicknameForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const nickname = nicknameInput?.value.trim();
+    if (!nickname) return;
+    const submit = nicknameForm.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      await window.vaultIdentity.setTesseraNickname(nickname);
+      renderSelfProfile();
+      nicknameForm.hidden = true;
+      nicknameToggle?.setAttribute('aria-expanded', 'false');
+      setMessageFeedback('별명을 저장했습니다.', 'Nickname saved.');
+    } catch (error) {
+      setMessageFeedback(
+        `별명을 저장하지 못했습니다: ${messageErrorText(error)}`,
+        `Nickname could not be saved: ${messageErrorText(error)}`,
+        true,
+      );
+    } finally {
+      submit.disabled = false;
+    }
+  });
 
   messageForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -453,8 +634,8 @@
     } catch (error) {
       setLocalizedText(boundaryStatus, '암호화 실패', 'Encryption failed');
       setMessageFeedback(
-        `메시지를 전송하지 못했습니다: ${error.message}`,
-        `Message could not be sent: ${error.message}`,
+        `메시지를 전송하지 못했습니다: ${messageErrorText(error)}`,
+        `Message could not be sent: ${messageErrorText(error)}`,
         true,
       );
       console.error('Message operation failed', error);
@@ -819,11 +1000,13 @@
     }
 
     activeIdentity = identity;
+    if (!activeIdentity.vaultId) activeIdentity.vaultId = activeIdentity.displayName;
     adminAccess = identity.mode === 'SUPABASE' && String(identity.role).toLowerCase() === 'admin';
     if (adminNav) adminNav.hidden = !adminAccess;
     if (adminOrganization) adminOrganization.textContent = identity.organization.name;
     const shortDeviceId = identity.device.id.split('-')[0].toUpperCase();
     if (deviceId) deviceId.textContent = `${shortDeviceId} / ${identity.device.fingerprint}`;
+    renderSelfProfile();
     messageKey = await createKey();
     setLocalizedText(
       keyState,
@@ -841,11 +1024,21 @@
     } else {
       setLocalizedText(signalSummary, '로컬 암호화 증명 · 네트워크 없음', 'Local encryption proof · no network');
       if (messageNetwork) messageNetwork.textContent = 'DISABLED';
+      if (nicknameToggle) nicknameToggle.hidden = true;
       if (contactSelect) {
         const option = document.createElement('option');
         option.value = '';
         option.textContent = pick('로컬 라운드트립 시연', 'Local round-trip proof');
         contactSelect.replaceChildren(option);
+      }
+      setLocalizedText(contactName, '로컬 암호화 시연', 'Local encryption proof');
+      setLocalizedText(contactMeta, '서버 전송 없이 이 브라우저에서 왕복 검증합니다.', 'Verified in this browser without server transfer.');
+      if (contactAvatar) contactAvatar.textContent = 'L';
+      tesseraShell?.classList.add('has-conversation');
+      if (contactList) {
+        const note = document.createElement('p');
+        note.textContent = pick('Supabase 로그인 시 같은 조직의 대화 상대가 여기에 표시됩니다.', 'Organization contacts appear here after Supabase sign-in.');
+        contactList.replaceChildren(note);
       }
       setMessageFeedback('로컬 프리뷰에서는 서버 전송 없이 암호화 왕복만 검증합니다.', 'Local preview verifies encryption round-trip without a server.');
       messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
@@ -860,6 +1053,17 @@
     setLocalizedText(keyState, '초기화 실패', 'Initialization failed');
     console.error('Trust Lab initialization failed', error);
   }), { once: true });
+
+  window.addEventListener('vault:identity-conflict', () => {
+    unsubscribeMessages?.();
+    messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+    if (messageNetwork) messageNetwork.textContent = 'SESSION CONFLICT';
+    setMessageFeedback(
+      '다른 탭에서 계정이 변경되었습니다. 두 계정 테스트는 서로 다른 브라우저 또는 Chrome 프로필에서 진행하세요.',
+      'The account changed in another tab. Use separate browsers or Chrome profiles for two-account testing.',
+      true,
+    );
+  });
 
   window.addEventListener('beforeunload', () => unsubscribeMessages?.());
 })();
