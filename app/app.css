@@ -757,6 +757,75 @@ label:has(input:focus-visible) {
   text-transform: uppercase;
 }
 
+.contact-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem 1.5rem;
+  align-items: end;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.contact-strip > div {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.contact-strip label,
+.contact-strip p {
+  color: rgb(242 238 227 / 42%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.contact-strip select {
+  width: 100%;
+  padding: 0.7rem 2rem 0.7rem 0;
+  color: var(--ivory);
+  background: var(--charcoal);
+  border: 0;
+  border-bottom: 1px solid rgb(242 238 227 / 28%);
+  border-radius: 0;
+  outline: 0;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.contact-strip select:focus-visible {
+  border-bottom-color: var(--gold);
+}
+
+.contact-strip button {
+  padding: 0.7rem 0;
+  color: var(--gold);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.contact-strip button:disabled,
+.contact-strip select:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.contact-strip p {
+  grid-column: 1 / -1;
+  min-height: 1em;
+  margin: 0;
+  color: rgb(242 238 227 / 52%);
+  text-transform: none;
+}
+
+.contact-strip p.is-error {
+  color: #d88b76;
+}
+
 .message-stream {
   display: grid;
   gap: 1rem;
@@ -781,6 +850,18 @@ label:has(input:focus-visible) {
 
 .message--mine {
   justify-self: end;
+}
+
+.message--theirs {
+  color: var(--ivory);
+  background: transparent;
+  border: 1px solid var(--rule);
+}
+
+.message--failed {
+  color: rgb(242 238 227 / 52%);
+  background: transparent;
+  border: 1px dashed rgb(242 238 227 / 24%);
 }
 
 .message span {
@@ -1596,6 +1677,18 @@ label:has(input:focus-visible) {
 
   .message {
     width: 90%;
+  }
+
+  .contact-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-strip p {
+    grid-column: 1;
+  }
+
+  .contact-strip button {
+    justify-self: start;
   }
 
   .composer > div {

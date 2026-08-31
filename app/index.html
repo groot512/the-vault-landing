@@ -16,13 +16,13 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="app.css?v=260825-2">
+    <link rel="stylesheet" href="app.css?v=260831-1">
     <link rel="stylesheet" href="../navigation.css?v=260815-1">
     <script src="../i18n.js?v=260824-3" defer></script>
     <script src="config.js?v=260820-1" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
-    <script src="identity.js?v=260825-2" defer></script>
-    <script src="app.js?v=260825-2" defer></script>
+    <script src="identity.js?v=260831-1" defer></script>
+    <script src="app.js?v=260831-1" defer></script>
     <script src="../navigation.js?v=260815-1" defer></script>
   </head>
   <body>
@@ -241,28 +241,40 @@
             <header class="view-title">
               <p>01 / Secure Signal</p>
               <h2 id="signal-title">Project<br>Orbit</h2>
-              <span>1 verified device · Identity spike</span>
+              <span data-signal-summary>기기 암호화 · 1:1 MVP</span>
             </header>
+
+            <section class="contact-strip" data-contact-strip aria-labelledby="contact-title">
+              <div>
+                <label id="contact-title" for="tessera-contact" data-ko="대화 상대 기기" data-en="Recipient device">대화 상대 기기</label>
+                <select id="tessera-contact" data-contact-select disabled>
+                  <option value="" data-ko="조직 구성원을 불러오는 중" data-en="Loading organization members">조직 구성원을 불러오는 중</option>
+                </select>
+              </div>
+              <button type="button" data-contact-refresh disabled data-ko="구성원 새로고침" data-en="Refresh members">구성원 새로고침</button>
+              <p data-message-feedback role="status" aria-live="polite">인증과 기기 키 준비를 기다리고 있습니다.</p>
+            </section>
 
             <div class="message-stream" data-message-stream aria-live="polite">
               <article class="message message--system">
                 <span>Trust Kernel</span>
-                <p>이 세션의 기기 키가 준비되면 입력한 메시지는 브라우저에서 암호화됩니다.</p>
+                <p>상대 기기를 선택하면 서버의 암호문을 이 기기에서 복호화합니다.</p>
               </article>
             </div>
 
             <form class="composer" data-message-form>
-              <label for="message-input">암호화할 메시지</label>
+              <label for="message-input" data-ko="암호화할 메시지" data-en="Message to encrypt">암호화할 메시지</label>
               <textarea
                 id="message-input"
                 name="message"
                 rows="3"
                 placeholder="민감한 프로젝트 메시지를 입력하세요."
+                maxlength="8000"
                 required
               ></textarea>
               <div>
-                <span>Plaintext stays in this tab</span>
-                <button type="submit" disabled>Encrypt &amp; send <b aria-hidden="true">→</b></button>
+                <span data-ko="평문은 이 탭을 벗어나지 않습니다" data-en="Plaintext stays in this tab">평문은 이 탭을 벗어나지 않습니다</span>
+                <button type="submit" disabled><span data-ko="암호화 전송" data-en="Encrypt &amp; send">암호화 전송</span> <b aria-hidden="true">→</b></button>
               </div>
             </form>
           </div>
@@ -276,8 +288,8 @@
               메시지를 전송하면 네트워크 경계에 전달될 암호화 payload가 여기에 표시됩니다.
             </div>
             <dl>
-              <div><dt>Network</dt><dd>Disabled</dd></div>
-              <div><dt>Algorithm</dt><dd>AES-GCM / Browser proof</dd></div>
+              <div><dt>Network</dt><dd data-message-network>대기</dd></div>
+              <div><dt>Algorithm</dt><dd>ECDH + HKDF + AES-GCM</dd></div>
               <div><dt>Plaintext log</dt><dd>None</dd></div>
             </dl>
           </aside>

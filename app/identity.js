@@ -91,6 +91,60 @@
       }
       return data;
     },
+    listTesseraContacts: async (organizationId) => {
+      if (!client || currentIdentity?.mode !== 'SUPABASE') {
+        throw new Error('Supabase 사용자 세션이 필요합니다.');
+      }
+      const { data, error } = await client.rpc('list_tessera_contacts', {
+        requested_organization_id: organizationId,
+      });
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    },
+    listTesseraMessages: async (organizationId, peerUserId) => {
+      if (!client || currentIdentity?.mode !== 'SUPABASE') {
+        throw new Error('Supabase 사용자 세션이 필요합니다.');
+      }
+      const actorId = currentIdentity.userId;
+      const participants = [actorId, peerUserId];
+      const { data, error } = await client
+        .from('tessera_messages')
+        .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at')
+        .eq('organization_id', organizationId)
+        .in('sender_id', participants)
+        .in('recipient_id', participants)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data || []).reverse();
+    },
+    sendTesseraMessage: async (message) => {
+      if (!client || currentIdentity?.mode !== 'SUPABASE') {
+        throw new Error('Supabase 사용자 세션이 필요합니다.');
+      }
+      const { data, error } = await client
+        .from('tessera_messages')
+        .insert(message)
+        .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    subscribeTesseraMessages: (organizationId, onInsert, onStatus) => {
+      if (!client || currentIdentity?.mode !== 'SUPABASE') return () => {};
+      const channel = client
+        .channel(`tessera:${organizationId}:${window.crypto.randomUUID()}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'tessera_messages',
+          filter: `organization_id=eq.${organizationId}`,
+        }, (payload) => onInsert?.(payload.new))
+        .subscribe((status) => onStatus?.(status));
+      return () => {
+        void client.removeChannel(channel);
+      };
+    },
   });
 
   const hasRemoteConfig = Boolean(

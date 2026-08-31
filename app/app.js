@@ -9,6 +9,11 @@
   const messageForm = document.querySelector('[data-message-form]');
   const messageStream = document.querySelector('[data-message-stream]');
   const messageInput = document.querySelector('#message-input');
+  const contactSelect = document.querySelector('[data-contact-select]');
+  const contactRefresh = document.querySelector('[data-contact-refresh]');
+  const messageFeedback = document.querySelector('[data-message-feedback]');
+  const messageNetwork = document.querySelector('[data-message-network]');
+  const signalSummary = document.querySelector('[data-signal-summary]');
   const boundaryOutput = document.querySelector('[data-boundary-output]');
   const boundaryStatus = document.querySelector('[data-boundary-status]');
   const fileInput = document.querySelector('[data-file-input]');
@@ -30,6 +35,10 @@
   const memberRefresh = document.querySelector('[data-member-refresh]');
   const vaultItems = new Map();
   let messageKey = null;
+  let tesseraContacts = [];
+  let activeContact = null;
+  let unsubscribeMessages = null;
+  const renderedMessageIds = new Set();
   let activeIdentity = null;
   let issuedCredentials = null;
   let adminAccess = false;
@@ -66,6 +75,11 @@
     return window.btoa(binary);
   };
 
+  const base64ToBytes = (value) => {
+    const binary = window.atob(value);
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  };
+
   const renderPayload = (target, bytes) => {
     target.replaceChildren();
     const groups = bytesToBase64(bytes).match(/.{1,12}/g) || [];
@@ -99,6 +113,38 @@
     key,
     cipher,
   );
+
+  const deriveTesseraKey = async (contact) => {
+    const peerKey = await window.crypto.subtle.importKey(
+      'jwk',
+      contact.publicKeyJwk,
+      { name: 'ECDH', namedCurve: 'P-256' },
+      false,
+      [],
+    );
+    const sharedBits = await window.crypto.subtle.deriveBits({
+      name: 'ECDH',
+      public: peerKey,
+    }, activeIdentity.device.privateKey, 256);
+    const keyMaterial = await window.crypto.subtle.importKey(
+      'raw',
+      sharedBits,
+      'HKDF',
+      false,
+      ['deriveKey'],
+    );
+    const devicePair = [activeIdentity.device.id, contact.deviceId].sort().join(':');
+    const salt = await window.crypto.subtle.digest(
+      'SHA-256',
+      encoder.encode(`TESSERA:${activeIdentity.organization.id}:${devicePair}`),
+    );
+    return window.crypto.subtle.deriveKey({
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt,
+      info: encoder.encode('TESSERA-MESSAGE-MVP-V1'),
+    }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  };
 
   const addAudit = (event, scope = 'LOCAL') => {
     auditCounter += 1;
@@ -157,11 +203,33 @@
 
   window.addEventListener('hashchange', showHashView);
 
-  const appendMessage = (text) => {
+  const setMessageFeedback = (ko, en, isError = false) => {
+    setLocalizedText(messageFeedback, ko, en);
+    messageFeedback?.classList.toggle('is-error', isError);
+  };
+
+  const formatMessageTime = (value = new Date()) => new Intl.DateTimeFormat(
+    window.vaultI18n?.current() === 'en' ? 'en-GB' : 'ko-KR',
+    { hour: '2-digit', minute: '2-digit', hour12: false },
+  ).format(new Date(value));
+
+  const appendMessage = (text, {
+    mine = true,
+    sender: senderName = activeIdentity?.displayName || pick('인증된 사용자', 'Verified User'),
+    createdAt = new Date().toISOString(),
+    id = '',
+    failed = false,
+    system = false,
+  } = {}) => {
+    if (id && renderedMessageIds.has(id)) return;
+    if (id) renderedMessageIds.add(id);
+    if (!system) messageStream?.querySelectorAll('[data-empty-conversation]').forEach((item) => item.remove());
     const message = document.createElement('article');
-    message.className = 'message message--mine';
+    message.className = `message ${system ? 'message--system' : (failed ? 'message--failed' : (mine ? 'message--mine' : 'message--theirs'))}`;
+    if (id) message.dataset.messageId = id;
+    if (system) message.dataset.emptyConversation = '';
     const sender = document.createElement('span');
-    sender.textContent = `${activeIdentity?.displayName || pick('인증된 사용자', 'Verified User')} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+    sender.textContent = `${failed ? 'TRUST KERNEL' : senderName} · ${formatMessageTime(createdAt)}`;
     const body = document.createElement('p');
     body.textContent = text;
     message.append(sender, body);
@@ -169,37 +237,229 @@
     message.scrollIntoView({ block: 'nearest' });
   };
 
+  const contactForMessage = (message) => {
+    if (!activeContact) return null;
+    const peerDeviceId = message.sender_id === activeIdentity.userId
+      ? message.recipient_device_id
+      : message.sender_device_id;
+    return tesseraContacts.find((contact) => (
+      contact.userId === activeContact.userId && contact.deviceId === peerDeviceId
+    )) || null;
+  };
+
+  const decryptTesseraMessage = async (message) => {
+    const contact = contactForMessage(message);
+    if (!contact) throw new Error('Message device key is unavailable.');
+    const key = await deriveTesseraKey(contact);
+    const decrypted = await decryptBytes(
+      key,
+      base64ToBytes(message.iv),
+      base64ToBytes(message.ciphertext),
+    );
+    return decoder.decode(decrypted);
+  };
+
+  const renderRemoteMessage = async (message) => {
+    if (!activeContact) return;
+    const actorId = activeIdentity.userId;
+    const belongsToActiveConversation = (
+      (message.sender_id === actorId && message.recipient_id === activeContact.userId)
+      || (message.sender_id === activeContact.userId && message.recipient_id === actorId)
+    );
+    if (!belongsToActiveConversation || renderedMessageIds.has(message.id)) return;
+    try {
+      const plain = await decryptTesseraMessage(message);
+      appendMessage(plain, {
+        mine: message.sender_id === actorId,
+        sender: message.sender_id === actorId ? activeIdentity.displayName : activeContact.vaultId,
+        createdAt: message.created_at,
+        id: message.id,
+      });
+    } catch {
+      appendMessage(
+        pick('이 기기에서는 메시지를 복호화할 수 없습니다.', 'This device cannot decrypt the message.'),
+        { mine: false, createdAt: message.created_at, id: message.id, failed: true },
+      );
+    }
+  };
+
+  const loadConversation = async () => {
+    renderedMessageIds.clear();
+    messageStream?.replaceChildren();
+    if (!activeContact) {
+      setMessageFeedback('대화할 구성원 기기를 선택하세요.', 'Choose a member device to start a conversation.');
+      return;
+    }
+    setMessageFeedback(`${activeContact.vaultId}의 암호문을 불러오고 있습니다.`, `Loading ciphertext for ${activeContact.vaultId}.`);
+    try {
+      const messages = await window.vaultIdentity.listTesseraMessages(
+        activeIdentity.organization.id,
+        activeContact.userId,
+      );
+      if (!messages.length) {
+        appendMessage(
+          pick('아직 메시지가 없습니다. 첫 암호화 메시지를 전송하세요.', 'No messages yet. Send the first encrypted message.'),
+          { mine: false, sender: 'TRUST KERNEL', system: true },
+        );
+      } else {
+        for (const message of messages) await renderRemoteMessage(message);
+      }
+      setMessageFeedback(
+        `${activeContact.vaultId} · ${activeContact.fingerprint} · 암호화 채널 준비`,
+        `${activeContact.vaultId} · ${activeContact.fingerprint} · encrypted channel ready`,
+      );
+    } catch (error) {
+      setMessageFeedback(
+        `대화를 불러오지 못했습니다: ${error.message}`,
+        `Conversation failed to load: ${error.message}`,
+        true,
+      );
+    }
+  };
+
+  const normalizeContact = (contact) => ({
+    userId: contact.user_id,
+    vaultId: contact.vault_id,
+    deviceId: contact.device_id,
+    publicKeyJwk: contact.public_key_jwk,
+    fingerprint: contact.fingerprint,
+    lastSeenAt: contact.last_seen_at,
+  });
+
+  const loadTesseraContacts = async () => {
+    if (activeIdentity?.mode !== 'SUPABASE') return;
+    contactSelect.disabled = true;
+    contactRefresh.disabled = true;
+    setMessageFeedback('조직 구성원과 기기 공개키를 확인하고 있습니다.', 'Loading organization members and device public keys.');
+    try {
+      tesseraContacts = (await window.vaultIdentity.listTesseraContacts(
+        activeIdentity.organization.id,
+      )).map(normalizeContact);
+      const previousDeviceId = activeContact?.deviceId || contactSelect.value;
+      contactSelect.replaceChildren();
+      if (!tesseraContacts.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = pick('활성 기기가 있는 다른 구성원이 없습니다', 'No other member has an active device');
+        contactSelect.appendChild(option);
+        activeContact = null;
+        messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+        setMessageFeedback(
+          '다른 구성원이 로그인해 기기를 등록하면 대화를 시작할 수 있습니다.',
+          'Another member must sign in and register a device before messaging.',
+        );
+        return;
+      }
+      tesseraContacts.forEach((contact) => {
+        const option = document.createElement('option');
+        option.value = contact.deviceId;
+        option.textContent = `${contact.vaultId} · ${contact.fingerprint}`;
+        option.dataset.noI18n = '';
+        contactSelect.appendChild(option);
+      });
+      contactSelect.value = tesseraContacts.some((contact) => contact.deviceId === previousDeviceId)
+        ? previousDeviceId
+        : tesseraContacts[0].deviceId;
+      activeContact = tesseraContacts.find((contact) => contact.deviceId === contactSelect.value);
+      contactSelect.disabled = false;
+      await loadConversation();
+      messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
+    } catch (error) {
+      messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+      setMessageFeedback(
+        `메시지 기능을 준비하지 못했습니다: ${error.message}`,
+        `Messaging could not be prepared: ${error.message}`,
+        true,
+      );
+    } finally {
+      contactRefresh.disabled = false;
+    }
+  };
+
+  const startTesseraSubscription = () => {
+    unsubscribeMessages?.();
+    unsubscribeMessages = window.vaultIdentity.subscribeTesseraMessages(
+      activeIdentity.organization.id,
+      (message) => void renderRemoteMessage(message),
+      (status) => {
+        if (messageNetwork) messageNetwork.textContent = status === 'SUBSCRIBED' ? 'REALTIME / RLS' : status;
+      },
+    );
+  };
+
+  contactSelect?.addEventListener('change', () => {
+    activeContact = tesseraContacts.find((contact) => contact.deviceId === contactSelect.value) || null;
+    void loadConversation();
+  });
+
+  contactRefresh?.addEventListener('click', () => void loadTesseraContacts());
+
   messageForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const plain = messageInput?.value.trim();
-    if (!plain || !messageKey) return;
+    if (!plain) return;
+    const plainBytes = encoder.encode(plain);
+    if (plainBytes.byteLength > 8000) {
+      setMessageFeedback(
+        `메시지가 너무 깁니다: ${plainBytes.byteLength.toLocaleString()} / 8,000바이트`,
+        `Message is too long: ${plainBytes.byteLength.toLocaleString()} / 8,000 bytes`,
+        true,
+      );
+      return;
+    }
 
     const submit = messageForm.querySelector('button[type="submit"]');
     submit.disabled = true;
     setLocalizedText(boundaryStatus, '브라우저에서 암호화 중', 'Encrypting locally');
 
     try {
-      const encrypted = await encryptBytes(messageKey, encoder.encode(plain));
-      const decrypted = await decryptBytes(messageKey, encrypted.iv, encrypted.cipher);
-      const verified = decoder.decode(decrypted) === plain;
-      renderPayload(boundaryOutput, encrypted.payload);
-      if (verified) {
+      if (activeIdentity?.mode === 'SUPABASE') {
+        if (!activeContact) throw new Error('대화 상대 기기를 선택하세요.');
+        const key = await deriveTesseraKey(activeContact);
+        const encrypted = await encryptBytes(key, plainBytes);
+        renderPayload(boundaryOutput, encrypted.payload);
+        const stored = await window.vaultIdentity.sendTesseraMessage({
+          organization_id: activeIdentity.organization.id,
+          sender_id: activeIdentity.userId,
+          recipient_id: activeContact.userId,
+          sender_device_id: activeIdentity.device.id,
+          recipient_device_id: activeContact.deviceId,
+          algorithm: 'ECDH-P256/HKDF-SHA256/AES-256-GCM',
+          iv: bytesToBase64(encrypted.iv),
+          ciphertext: bytesToBase64(encrypted.cipher),
+        });
+        await renderRemoteMessage(stored);
         setLocalizedText(
           boundaryStatus,
-          `검증 완료 / ${encrypted.payload.byteLength}바이트`,
-          `Verified / ${encrypted.payload.byteLength} bytes`,
+          `암호문 저장 / ${encrypted.payload.byteLength}바이트`,
+          `Ciphertext stored / ${encrypted.payload.byteLength} bytes`,
         );
+        setMessageFeedback('암호화된 메시지를 전송했습니다.', 'Encrypted message sent.');
       } else {
-        setLocalizedText(boundaryStatus, '검증 실패', 'Verification failed');
+        if (!messageKey) throw new Error('세션 키가 준비되지 않았습니다.');
+        const encrypted = await encryptBytes(messageKey, plainBytes);
+        const decrypted = await decryptBytes(messageKey, encrypted.iv, encrypted.cipher);
+        const verified = decoder.decode(decrypted) === plain;
+        renderPayload(boundaryOutput, encrypted.payload);
+        setLocalizedText(
+          boundaryStatus,
+          verified ? `로컬 검증 / ${encrypted.payload.byteLength}바이트` : '검증 실패',
+          verified ? `Local proof / ${encrypted.payload.byteLength} bytes` : 'Verification failed',
+        );
+        if (verified) appendMessage(plain);
       }
-      appendMessage(plain);
       messageInput.value = '';
       addAudit('MESSAGE_ENCRYPTED', 'TESSERA');
     } catch (error) {
       setLocalizedText(boundaryStatus, '암호화 실패', 'Encryption failed');
-      console.error('Message proof failed', error);
+      setMessageFeedback(
+        `메시지를 전송하지 못했습니다: ${error.message}`,
+        `Message could not be sent: ${error.message}`,
+        true,
+      );
+      console.error('Message operation failed', error);
     } finally {
-      submit.disabled = false;
+      submit.disabled = activeIdentity?.mode === 'SUPABASE' && !activeContact;
       messageInput?.focus();
     }
   });
@@ -570,10 +830,26 @@
       '기기 검증 완료 / 세션 콘텐츠 키 준비됨',
       'Device verified / Session content key ready',
     );
-    messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
     fileInput?.removeAttribute('disabled');
     addAudit('IDENTITY_VERIFIED', identity.mode);
     addAudit('DEVICE_KEY_READY', 'TRUST KERNEL');
+    if (identity.mode === 'SUPABASE') {
+      setLocalizedText(signalSummary, '1:1 기기 암호화 · 실시간 MVP', '1:1 device encryption · realtime MVP');
+      if (messageNetwork) messageNetwork.textContent = 'CONNECTING';
+      startTesseraSubscription();
+      await loadTesseraContacts();
+    } else {
+      setLocalizedText(signalSummary, '로컬 암호화 증명 · 네트워크 없음', 'Local encryption proof · no network');
+      if (messageNetwork) messageNetwork.textContent = 'DISABLED';
+      if (contactSelect) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = pick('로컬 라운드트립 시연', 'Local round-trip proof');
+        contactSelect.replaceChildren(option);
+      }
+      setMessageFeedback('로컬 프리뷰에서는 서버 전송 없이 암호화 왕복만 검증합니다.', 'Local preview verifies encryption round-trip without a server.');
+      messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
+    }
     if (adminAccess && window.location.hash === '#admin') showView('admin');
   };
 
@@ -584,4 +860,6 @@
     setLocalizedText(keyState, '초기화 실패', 'Initialization failed');
     console.error('Trust Lab initialization failed', error);
   }), { once: true });
+
+  window.addEventListener('beforeunload', () => unsubscribeMessages?.());
 })();
