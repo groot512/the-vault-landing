@@ -117,7 +117,7 @@
       const participants = [actorId, peerUserId];
       const { data, error } = await client
         .from('tessera_messages')
-        .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at')
+        .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at, delivered_at, read_at')
         .eq('organization_id', organizationId)
         .in('sender_id', participants)
         .in('recipient_id', participants)
@@ -131,10 +131,21 @@
       const { data, error } = await client
         .from('tessera_messages')
         .insert(message)
-        .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at')
+        .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at, delivered_at, read_at')
         .single();
       if (error) throw error;
       return data;
+    },
+    acknowledgeTesseraMessages: async ({ organizationId, senderId, recipientDeviceId, state }) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('acknowledge_tessera_messages', {
+        requested_organization_id: organizationId,
+        requested_sender_id: senderId,
+        requested_recipient_device_id: recipientDeviceId,
+        requested_state: state,
+      });
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
     },
     setTesseraNickname: async (nickname) => {
       await verifyCurrentActor();
@@ -148,7 +159,7 @@
       workspaceIdentity.textContent = `${currentIdentity.displayName} / ${currentIdentity.organization.name}`;
       return data;
     },
-    subscribeTesseraMessages: (organizationId, onInsert, onStatus) => {
+    subscribeTesseraMessages: (organizationId, onInsert, onUpdate, onStatus) => {
       if (!client || currentIdentity?.mode !== 'SUPABASE') return () => {};
       const channel = client
         .channel(`tessera:${organizationId}:${window.crypto.randomUUID()}`)
@@ -158,6 +169,12 @@
           table: 'tessera_messages',
           filter: `organization_id=eq.${organizationId}`,
         }, (payload) => onInsert?.(payload.new))
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tessera_messages',
+          filter: `organization_id=eq.${organizationId}`,
+        }, (payload) => onUpdate?.(payload.new))
         .subscribe((status) => onStatus?.(status));
       return () => {
         void client.removeChannel(channel);

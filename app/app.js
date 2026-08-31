@@ -56,6 +56,8 @@
   let activeContact = null;
   let unsubscribeMessages = null;
   const renderedMessageIds = new Set();
+  let realtimeSubscribedOnce = false;
+  let reconnectSyncPromise = null;
   let activeIdentity = null;
   let issuedCredentials = null;
   let adminAccess = false;
@@ -210,6 +212,7 @@
       const name = button.dataset.viewTarget;
       showView(name);
       window.history.replaceState(null, '', `#${name}`);
+      if (name === 'signal') acknowledgeVisibleConversation();
     });
   });
 
@@ -279,6 +282,22 @@
     { hour: '2-digit', minute: '2-digit', hour12: false },
   ).format(new Date(value));
 
+  const receiptLabel = (message) => {
+    if (message?.read_at) return pick('읽음', 'Read');
+    if (message?.delivered_at) return pick('전달됨', 'Delivered');
+    return pick('전송됨', 'Sent');
+  };
+
+  const updateMessageReceipt = (message) => {
+    if (!message?.id || message.sender_id !== activeIdentity?.userId) return;
+    const node = [...(messageStream?.querySelectorAll('[data-message-id]') || [])]
+      .find((candidate) => candidate.dataset.messageId === message.id);
+    const state = node?.querySelector('[data-message-state]');
+    if (!state) return;
+    state.textContent = receiptLabel(message);
+    state.dataset.receipt = message.read_at ? 'read' : (message.delivered_at ? 'delivered' : 'sent');
+  };
+
   const appendMessage = (text, {
     mine = true,
     sender: senderName = activeIdentity?.displayName || pick('인증된 사용자', 'Verified User'),
@@ -286,6 +305,8 @@
     id = '',
     failed = false,
     system = false,
+    deliveredAt = null,
+    readAt = null,
   } = {}) => {
     if (id && renderedMessageIds.has(id)) return;
     if (id) renderedMessageIds.add(id);
@@ -299,6 +320,14 @@
     const body = document.createElement('p');
     body.textContent = text;
     message.append(sender, body);
+    if (mine && !system && !failed) {
+      const state = document.createElement('small');
+      state.className = 'message__state';
+      state.dataset.messageState = '';
+      state.dataset.receipt = readAt ? 'read' : (deliveredAt ? 'delivered' : 'sent');
+      state.textContent = receiptLabel({ delivered_at: deliveredAt, read_at: readAt });
+      message.appendChild(state);
+    }
     messageStream?.appendChild(message);
     message.scrollIntoView({ block: 'nearest' });
   };
@@ -325,22 +354,59 @@
     return decoder.decode(decrypted);
   };
 
-  const renderRemoteMessage = async (message) => {
+  const conversationIsVisible = () => {
+    const signalView = document.querySelector('[data-view="signal"]');
+    const mobileDirectoryOpen = window.matchMedia('(max-width: 720px)').matches
+      && !tesseraShell?.classList.contains('has-conversation');
+    return document.visibilityState === 'visible'
+      && !signalView?.hidden
+      && !mobileDirectoryOpen;
+  };
+
+  const acknowledgeActiveConversation = async (state = 'delivered') => {
+    if (activeIdentity?.mode !== 'SUPABASE' || !activeContact?.userId) return;
+    const receipts = await window.vaultIdentity.acknowledgeTesseraMessages({
+      organizationId: activeIdentity.organization.id,
+      senderId: activeContact.userId,
+      recipientDeviceId: activeIdentity.device.id,
+      state,
+    });
+    receipts.forEach(updateMessageReceipt);
+  };
+
+  const acknowledgeLoadedConversation = async () => {
+    try {
+      await acknowledgeActiveConversation('delivered');
+      if (conversationIsVisible()) await acknowledgeActiveConversation('read');
+    } catch (error) {
+      console.warn('Message receipt could not be synchronized:', messageErrorText(error));
+    }
+  };
+
+  const renderRemoteMessage = async (message, { acknowledge = true } = {}) => {
     if (!activeContact) return;
     const actorId = activeIdentity.userId;
     const belongsToActiveConversation = (
       (message.sender_id === actorId && message.recipient_id === activeContact.userId)
       || (message.sender_id === activeContact.userId && message.recipient_id === actorId)
     );
-    if (!belongsToActiveConversation || renderedMessageIds.has(message.id)) return;
+    if (!belongsToActiveConversation) return;
+    if (renderedMessageIds.has(message.id)) {
+      updateMessageReceipt(message);
+      return;
+    }
     try {
       const plain = await decryptTesseraMessage(message);
+      const mine = message.sender_id === actorId;
       appendMessage(plain, {
-        mine: message.sender_id === actorId,
-        sender: message.sender_id === actorId ? activeIdentity.displayName : activeContact.vaultId,
+        mine,
+        sender: mine ? activeIdentity.displayName : activeContact.vaultId,
         createdAt: message.created_at,
         id: message.id,
+        deliveredAt: message.delivered_at,
+        readAt: message.read_at,
       });
+      if (!mine && acknowledge) await acknowledgeLoadedConversation();
     } catch {
       appendMessage(
         pick('이 기기에서는 메시지를 복호화할 수 없습니다.', 'This device cannot decrypt the message.'),
@@ -368,7 +434,8 @@
           { mine: false, sender: 'TRUST KERNEL', system: true },
         );
       } else {
-        for (const message of messages) await renderRemoteMessage(message);
+        for (const message of messages) await renderRemoteMessage(message, { acknowledge: false });
+        await acknowledgeLoadedConversation();
       }
       setMessageFeedback(
         `${activeContact.vaultId} · ${activeContact.fingerprint} · 암호화 채널 준비`,
@@ -519,8 +586,20 @@
     unsubscribeMessages = window.vaultIdentity.subscribeTesseraMessages(
       activeIdentity.organization.id,
       (message) => void renderRemoteMessage(message),
+      updateMessageReceipt,
       (status) => {
-        if (messageNetwork) messageNetwork.textContent = status === 'SUBSCRIBED' ? 'REALTIME / RLS' : status;
+        if (status === 'SUBSCRIBED') {
+          if (messageNetwork) messageNetwork.textContent = 'ONLINE / SYNCED';
+          messageForm?.querySelector('button[type="submit"]')?.toggleAttribute('disabled', !activeContact);
+          if (realtimeSubscribedOnce && activeContact && !reconnectSyncPromise) {
+            reconnectSyncPromise = loadConversation().finally(() => {
+              reconnectSyncPromise = null;
+            });
+          }
+          realtimeSubscribedOnce = true;
+          return;
+        }
+        if (messageNetwork) messageNetwork.textContent = status;
       },
     );
   };
@@ -537,6 +616,30 @@
 
   conversationBack?.addEventListener('click', () => {
     tesseraShell?.classList.remove('has-conversation');
+  });
+
+  const acknowledgeVisibleConversation = () => {
+    if (conversationIsVisible()) {
+      void acknowledgeActiveConversation('read').catch((error) => {
+        console.warn('Read receipt could not be synchronized:', messageErrorText(error));
+      });
+    }
+  };
+
+  document.addEventListener('visibilitychange', acknowledgeVisibleConversation);
+  window.addEventListener('focus', acknowledgeVisibleConversation);
+  window.addEventListener('offline', () => {
+    if (messageNetwork) messageNetwork.textContent = 'OFFLINE';
+    messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+    setMessageFeedback(
+      '네트워크 연결이 끊겼습니다. 작성 중인 내용은 유지되며 재연결 후 대화를 동기화합니다.',
+      'You are offline. Your draft is preserved and the conversation will sync after reconnecting.',
+    );
+  });
+  window.addEventListener('online', () => {
+    if (activeIdentity?.mode !== 'SUPABASE') return;
+    if (messageNetwork) messageNetwork.textContent = 'RECONNECTING';
+    startTesseraSubscription();
   });
 
   const setSecurityPanel = (open) => {
