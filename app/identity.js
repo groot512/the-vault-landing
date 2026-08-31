@@ -111,15 +111,16 @@
       if (error) throw error;
       return Array.isArray(data) ? data : [];
     },
-    listTesseraConversationSummaries: async (organizationId) => {
+    listTesseraConversationSummaries: async (organizationId, deviceId) => {
       await verifyCurrentActor();
       const { data, error } = await client.rpc('list_tessera_conversation_summaries', {
         requested_organization_id: organizationId,
+        requested_device_id: deviceId,
       });
       if (error) throw error;
       return Array.isArray(data) ? data : [];
     },
-    listTesseraMessages: async (organizationId, peerUserId) => {
+    listTesseraMessages: async (organizationId, peerUserId, deviceId) => {
       await verifyCurrentActor();
       const actorId = currentIdentity.userId;
       const participants = [actorId, peerUserId];
@@ -129,6 +130,7 @@
         .eq('organization_id', organizationId)
         .in('sender_id', participants)
         .in('recipient_id', participants)
+        .or(`and(sender_id.eq.${actorId},sender_device_id.eq.${deviceId}),and(recipient_id.eq.${actorId},recipient_device_id.eq.${deviceId})`)
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;

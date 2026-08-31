@@ -446,6 +446,7 @@
       const messages = await window.vaultIdentity.listTesseraMessages(
         activeIdentity.organization.id,
         activeContact.userId,
+        activeIdentity.device.id,
       );
       if (!messages.length) {
         appendMessage(
@@ -500,6 +501,7 @@
     if (activeIdentity?.mode !== 'SUPABASE') return;
     const summaries = await window.vaultIdentity.listTesseraConversationSummaries(
       activeIdentity.organization.id,
+      activeIdentity.device.id,
     );
     conversationSummaries = new Map(summaries.map((summary) => [summary.user_id, {
       lastMessageAt: summary.last_message_at,
