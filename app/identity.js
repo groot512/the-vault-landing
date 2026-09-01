@@ -264,7 +264,9 @@
 
   const localPreviewRequested = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)
     && new URLSearchParams(window.location.search).get('preview') === 'local';
-  const hasRemoteConfig = !localPreviewRequested && Boolean(
+  const uxPreviewRequested = window.location.pathname.startsWith('/preview/mobile-v2/')
+    && new URLSearchParams(window.location.search).get('preview') === 'ux';
+  const hasRemoteConfig = !localPreviewRequested && !uxPreviewRequested && Boolean(
     config.supabaseUrl
       && config.supabasePublishableKey
       && /^https:\/\/.+\.supabase\.co$/.test(config.supabaseUrl),
@@ -629,6 +631,21 @@
     else await showRecoveryPanel(identity);
   };
 
+  const initializeUxPreview = () => {
+    modeLabel.textContent = 'UX PREVIEW / NO SERVER';
+    authBoundary.textContent = 'Visual demo only';
+    revealWorkspace({
+      userId: 'ux-preview',
+      vaultId: 'preview-vault',
+      displayName: '나의 금고',
+      nickname: '미리보기',
+      role: 'MEMBER',
+      mode: 'UX PREVIEW',
+      organization: { id: 'ux-preview', name: 'PRIVATE SPACE' },
+      device: { id: 'preview-device', fingerprint: 'VISUAL:DEMO', publicKeyJwk: null },
+    });
+  };
+
   authModeButtons.forEach((button) => {
     button.addEventListener('click', () => {
       authMode = button.dataset.authMode;
@@ -850,6 +867,11 @@
     if (client) await client.auth.signOut();
     window.location.reload();
   });
+
+  if (uxPreviewRequested) {
+    window.setTimeout(initializeUxPreview, 0);
+    return;
+  }
 
   if (!window.crypto?.subtle || !window.indexedDB) {
     setFeedback('이 브라우저는 기기 키 저장에 필요한 Web Crypto 또는 IndexedDB를 지원하지 않습니다.', true);

@@ -1606,6 +1606,10 @@
 
   const handleVaultFile = async (file) => {
     if (!file) return;
+    if (activeIdentity?.mode === 'UX PREVIEW') {
+      setLocalizedText(fileStatus, '미리보기에서는 실제 파일을 저장하지 않습니다', 'Files are not stored in visual preview');
+      return;
+    }
     if (file.size > 10 * 1024 * 1024) {
       setLocalizedText(fileStatus, '파일이 10MB를 초과합니다', 'File exceeds 10 MB');
       return;
@@ -1837,6 +1841,18 @@
   });
 
   const initialize = async (identity) => {
+    if (identity.mode === 'UX PREVIEW') {
+      activeIdentity = identity;
+      if (mobileIdentity) mobileIdentity.textContent = '@preview-vault';
+      if (mobileDevice) mobileDevice.textContent = '시각 미리보기 · 저장 안 함';
+      if (deviceId) deviceId.textContent = 'PREVIEW / VISUAL:DEMO';
+      setLocalizedText(keyState, '시각 미리보기 / 서버 연결 없음', 'Visual preview / No server connection');
+      setLocalizedText(fileStatus, '화면 비교용 · 실제 저장 안 함', 'Visual demo · Nothing is stored');
+      fileInput?.removeAttribute('disabled');
+      renderSelfProfile();
+      showView(window.location.hash.slice(1) || 'archive');
+      return;
+    }
     if (!window.crypto?.subtle) {
       setLocalizedText(keyState, 'Web Crypto를 사용할 수 없음', 'Web Crypto unavailable');
       messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
