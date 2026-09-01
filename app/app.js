@@ -270,8 +270,11 @@
     }
     if (contactName) contactName.textContent = contactLabel(activeContact);
     if (contactMeta) {
+      const deviceCount = tesseraContacts.filter((contact) => (
+        contact.userId === activeContact.userId && contact.deviceId
+      )).length;
       contactMeta.textContent = activeContact.deviceId
-        ? `@${activeContact.vaultId} · ${activeContact.fingerprint}`
+        ? `@${activeContact.vaultId} · ${pick(`${deviceCount}개 기기 암호화`, `${deviceCount} encrypted device${deviceCount === 1 ? '' : 's'}`)}`
         : `@${activeContact.vaultId} · ${pick('기기 미등록', 'No registered device')}`;
     }
     if (contactAvatar) contactAvatar.textContent = avatarLetter(contactLabel(activeContact));
@@ -302,14 +305,30 @@
     return pick('전송됨', 'Sent');
   };
 
+  const messageDisplayId = (message) => message?.message_group_id || message?.id || '';
+
+  const receiptRank = (value) => ({ sent: 0, delivered: 1, read: 2 }[value] ?? 0);
+
+  const messageTargetsActiveDevice = (message) => {
+    const actorId = activeIdentity?.userId;
+    const actorDeviceId = activeIdentity?.device?.id;
+    if (!actorId || !actorDeviceId) return false;
+    if (message.sender_id === actorId) return message.sender_device_id === actorDeviceId;
+    if (message.recipient_id === actorId) return message.recipient_device_id === actorDeviceId;
+    return false;
+  };
+
   const updateMessageReceipt = (message) => {
-    if (!message?.id || message.sender_id !== activeIdentity?.userId) return;
+    const displayId = messageDisplayId(message);
+    if (!displayId || message.sender_id !== activeIdentity?.userId) return;
     const node = [...(messageStream?.querySelectorAll('[data-message-id]') || [])]
-      .find((candidate) => candidate.dataset.messageId === message.id);
+      .find((candidate) => candidate.dataset.messageId === displayId);
     const state = node?.querySelector('[data-message-state]');
     if (!state) return;
+    const nextReceipt = message.read_at ? 'read' : (message.delivered_at ? 'delivered' : 'sent');
+    if (receiptRank(nextReceipt) < receiptRank(state.dataset.receipt)) return;
     state.textContent = receiptLabel(message);
-    state.dataset.receipt = message.read_at ? 'read' : (message.delivered_at ? 'delivered' : 'sent');
+    state.dataset.receipt = nextReceipt;
   };
 
   const appendMessage = (text, {
@@ -404,13 +423,15 @@
 
   const renderRemoteMessage = async (message, { acknowledge = true } = {}) => {
     if (!activeContact) return;
+    if (!messageTargetsActiveDevice(message)) return;
     const actorId = activeIdentity.userId;
     const belongsToActiveConversation = (
       (message.sender_id === actorId && message.recipient_id === activeContact.userId)
       || (message.sender_id === activeContact.userId && message.recipient_id === actorId)
     );
     if (!belongsToActiveConversation) return;
-    if (renderedMessageIds.has(message.id)) {
+    const displayId = messageDisplayId(message);
+    if (renderedMessageIds.has(displayId)) {
       updateMessageReceipt(message);
       return;
     }
@@ -421,7 +442,7 @@
         mine,
         sender: mine ? activeIdentity.displayName : activeContact.vaultId,
         createdAt: message.created_at,
-        id: message.id,
+        id: displayId,
         deliveredAt: message.delivered_at,
         readAt: message.read_at,
       });
@@ -429,7 +450,7 @@
     } catch {
       appendMessage(
         pick('이 기기에서는 메시지를 복호화할 수 없습니다.', 'This device cannot decrypt the message.'),
-        { mine: false, createdAt: message.created_at, id: message.id, failed: true },
+        { mine: false, createdAt: message.created_at, id: displayId, failed: true },
       );
     }
   };
@@ -458,8 +479,8 @@
         await acknowledgeLoadedConversation();
       }
       setMessageFeedback(
-        `${activeContact.vaultId} · ${activeContact.fingerprint} · 암호화 채널 준비`,
-        `${activeContact.vaultId} · ${activeContact.fingerprint} · encrypted channel ready`,
+        `${activeContact.vaultId} · ${tesseraContacts.filter((contact) => contact.userId === activeContact.userId && contact.deviceId).length}개 기기 · 암호화 채널 준비`,
+        `${activeContact.vaultId} · ${tesseraContacts.filter((contact) => contact.userId === activeContact.userId && contact.deviceId).length} devices · encrypted channel ready`,
       );
     } catch (error) {
       setMessageFeedback(
@@ -765,27 +786,45 @@
     try {
       if (activeIdentity?.mode === 'SUPABASE') {
         if (!activeContact) throw new Error('대화 상대 기기를 선택하세요.');
-        const key = await deriveTesseraKey(activeContact);
-        const encrypted = await encryptBytes(key, plainBytes);
-        renderPayload(boundaryOutput, encrypted.payload);
-        const stored = await window.vaultIdentity.sendTesseraMessage({
-          organization_id: activeIdentity.organization.id,
-          sender_id: activeIdentity.userId,
-          recipient_id: activeContact.userId,
-          sender_device_id: activeIdentity.device.id,
-          recipient_device_id: activeContact.deviceId,
-          algorithm: 'ECDH-P256/HKDF-SHA256/AES-256-GCM',
-          iv: bytesToBase64(encrypted.iv),
-          ciphertext: bytesToBase64(encrypted.cipher),
-        });
-        await renderRemoteMessage(stored);
+        const recipientDevices = [...new Map(
+          tesseraContacts
+            .filter((contact) => contact.userId === activeContact.userId && contact.deviceId)
+            .map((contact) => [contact.deviceId, contact]),
+        ).values()];
+        if (!recipientDevices.length) throw new Error('상대방의 활성 기기가 없습니다.');
+        const messageGroupId = window.crypto.randomUUID();
+        const envelopes = [];
+        const encryptedPayloads = [];
+        for (const contact of recipientDevices) {
+          const key = await deriveTesseraKey(contact);
+          const encrypted = await encryptBytes(key, plainBytes);
+          encryptedPayloads.push(encrypted.payload);
+          envelopes.push({
+            message_group_id: messageGroupId,
+            organization_id: activeIdentity.organization.id,
+            sender_id: activeIdentity.userId,
+            recipient_id: activeContact.userId,
+            sender_device_id: activeIdentity.device.id,
+            recipient_device_id: contact.deviceId,
+            algorithm: 'ECDH-P256/HKDF-SHA256/AES-256-GCM',
+            iv: bytesToBase64(encrypted.iv),
+            ciphertext: bytesToBase64(encrypted.cipher),
+          });
+        }
+        renderPayload(boundaryOutput, encryptedPayloads[0]);
+        const storedMessages = await window.vaultIdentity.sendTesseraMessages(envelopes);
+        for (const stored of storedMessages) await renderRemoteMessage(stored);
         await loadTesseraSummaries();
+        const totalCiphertextBytes = encryptedPayloads.reduce((total, payload) => total + payload.byteLength, 0);
         setLocalizedText(
           boundaryStatus,
-          `암호문 저장 / ${encrypted.payload.byteLength}바이트`,
-          `Ciphertext stored / ${encrypted.payload.byteLength} bytes`,
+          `${recipientDevices.length}개 기기 암호문 저장 / ${totalCiphertextBytes}바이트`,
+          `${recipientDevices.length} device envelope${recipientDevices.length === 1 ? '' : 's'} stored / ${totalCiphertextBytes} bytes`,
         );
-        setMessageFeedback('암호화된 메시지를 전송했습니다.', 'Encrypted message sent.');
+        setMessageFeedback(
+          `${recipientDevices.length}개 활성 기기로 암호화된 메시지를 전송했습니다.`,
+          `Encrypted message sent to ${recipientDevices.length} active device${recipientDevices.length === 1 ? '' : 's'}.`,
+        );
       } else {
         if (!messageKey) throw new Error('세션 키가 준비되지 않았습니다.');
         const encrypted = await encryptBytes(messageKey, plainBytes);
@@ -1192,7 +1231,7 @@
     addAudit('IDENTITY_VERIFIED', identity.mode);
     addAudit('DEVICE_KEY_READY', 'TRUST KERNEL');
     if (identity.mode === 'SUPABASE') {
-      setLocalizedText(signalSummary, '1:1 기기 암호화 · 실시간 MVP', '1:1 device encryption · realtime MVP');
+      setLocalizedText(signalSummary, '1:1 계정 · 다중 기기 암호화 MVP', '1:1 account · multi-device encryption MVP');
       if (messageNetwork) messageNetwork.textContent = 'CONNECTING';
       startTesseraSubscription();
       await loadTesseraContacts();

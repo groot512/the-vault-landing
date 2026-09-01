@@ -126,7 +126,7 @@
       const participants = [actorId, peerUserId];
       const { data, error } = await client
         .from('tessera_messages')
-        .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at, delivered_at, read_at')
+        .select('id, message_group_id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at, delivered_at, read_at')
         .eq('organization_id', organizationId)
         .in('sender_id', participants)
         .in('recipient_id', participants)
@@ -136,15 +136,17 @@
       if (error) throw error;
       return (data || []).reverse();
     },
-    sendTesseraMessage: async (message) => {
+    sendTesseraMessages: async (messages) => {
       await verifyCurrentActor();
+      if (!Array.isArray(messages) || !messages.length) {
+        throw new Error('전송할 기기 암호문이 없습니다.');
+      }
       const { data, error } = await client
         .from('tessera_messages')
-        .insert(message)
-        .select('id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at, delivered_at, read_at')
-        .single();
+        .insert(messages)
+        .select('id, message_group_id, organization_id, sender_id, recipient_id, sender_device_id, recipient_device_id, algorithm, iv, ciphertext, created_at, delivered_at, read_at');
       if (error) throw error;
-      return data;
+      return Array.isArray(data) ? data : [];
     },
     acknowledgeTesseraMessages: async ({ organizationId, senderId, recipientDeviceId, state }) => {
       await verifyCurrentActor();
