@@ -118,6 +118,12 @@
     ['encrypt', 'decrypt'],
   );
 
+  const createPortableFileKey = () => window.crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt'],
+  );
+
   const encryptBytes = async (key, plainBytes) => {
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plainBytes);
@@ -165,6 +171,15 @@
       info: encoder.encode('TESSERA-MESSAGE-MVP-V1'),
     }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   };
+
+  const deriveVaultWrappingKey = () => deriveTesseraKey({
+    deviceId: activeIdentity.device.id,
+    publicKeyJwk: activeIdentity.device.publicKeyJwk,
+  });
+
+  const digestBase64 = async (bytes) => bytesToBase64(new Uint8Array(
+    await window.crypto.subtle.digest('SHA-256', bytes),
+  ));
 
   const addAudit = (event, scope = 'LOCAL') => {
     auditCounter += 1;
@@ -868,7 +883,17 @@
   const downloadVaultItem = async (id) => {
     const item = vaultItems.get(id);
     if (!item?.key) return;
-    const decrypted = await decryptBytes(item.key, item.iv, item.cipher);
+    let cipher = item.cipher;
+    if (item.remote) {
+      setLocalizedText(fileStatus, '암호문 다운로드 중', 'Downloading ciphertext');
+      const stored = await window.vaultIdentity.downloadVaultObject(item.objectPath);
+      cipher = new Uint8Array(await stored.arrayBuffer());
+      const actualDigest = await digestBase64(cipher);
+      if (actualDigest !== item.ciphertextSha256) {
+        throw new Error('암호문 무결성 검증에 실패했습니다.');
+      }
+    }
+    const decrypted = await decryptBytes(item.key, item.iv, cipher);
     const blob = new Blob([decrypted], { type: item.type || 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -876,22 +901,28 @@
     anchor.download = item.name;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setLocalizedText(fileStatus, '복호화 다운로드 완료', 'Decrypted download ready');
     addAudit('FILE_DECRYPTED', 'DIGITAL VAULT');
   };
 
-  const revokeVaultItem = (id, row) => {
+  const revokeVaultItem = async (id, row) => {
     const item = vaultItems.get(id);
     if (!item) return;
+    if (item.remote) {
+      setLocalizedText(fileStatus, '접근키 폐기 중', 'Revoking file key');
+      await window.vaultIdentity.revokeVaultFile(id);
+    }
     item.key = null;
     row.querySelectorAll('button').forEach((button) => {
       button.disabled = true;
     });
     const state = row.querySelector('[data-item-state]');
     setLocalizedText(state, '접근키 폐기 / 접근 불가', 'Key revoked / inaccessible');
+    setLocalizedText(fileStatus, '접근키 폐기 / 서버 암호문 유지', 'Key revoked / ciphertext retained');
     addAudit('FILE_KEY_REVOKED', 'DIGITAL VAULT');
   };
 
-  const appendVaultItem = (id, file) => {
+  const appendVaultItem = (id, file, options = {}) => {
     vaultList?.querySelector('.vault-list__empty')?.remove();
     const row = document.createElement('article');
     row.className = 'vault-item';
@@ -901,8 +932,12 @@
     state.dataset.itemState = '';
     setLocalizedText(
       state,
-      `암호화됨 / ${formatSize(file.size)}`,
-      `Encrypted / ${formatSize(file.size)}`,
+      options.revoked
+        ? '접근키 폐기 / 접근 불가'
+        : `${options.remote ? '서버 암호문' : '암호화됨'} / ${formatSize(file.size)}`,
+      options.revoked
+        ? 'Key revoked / inaccessible'
+        : `${options.remote ? 'Stored ciphertext' : 'Encrypted'} / ${formatSize(file.size)}`,
     );
     const name = document.createElement('strong');
     name.textContent = file.name;
@@ -915,16 +950,108 @@
     download.dataset.ko = '복호화 다운로드';
     download.dataset.en = 'Decrypt';
     download.textContent = pick(download.dataset.ko, download.dataset.en);
-    download.addEventListener('click', () => downloadVaultItem(id));
+    download.disabled = Boolean(options.revoked);
+    download.addEventListener('click', async () => {
+      try {
+        await downloadVaultItem(id);
+      } catch (error) {
+        setLocalizedText(
+          fileStatus,
+          `복호화하지 못했습니다: ${messageErrorText(error)}`,
+          `Could not decrypt: ${messageErrorText(error)}`,
+        );
+      }
+    });
     const revoke = document.createElement('button');
     revoke.type = 'button';
     revoke.dataset.ko = '접근키 폐기';
     revoke.dataset.en = 'Revoke';
     revoke.textContent = pick(revoke.dataset.ko, revoke.dataset.en);
-    revoke.addEventListener('click', () => revokeVaultItem(id, row));
+    revoke.disabled = Boolean(options.revoked);
+    revoke.addEventListener('click', async () => {
+      try {
+        await revokeVaultItem(id, row);
+      } catch (error) {
+        setLocalizedText(
+          fileStatus,
+          `접근키를 폐기하지 못했습니다: ${messageErrorText(error)}`,
+          `Could not revoke key: ${messageErrorText(error)}`,
+        );
+      }
+    });
     actions.append(download, revoke);
     row.append(info, actions);
     vaultList?.prepend(row);
+  };
+
+  const unwrapVaultFile = async (record) => {
+    if (record.revoked_at || !record.wrapped_key_ciphertext) {
+      return {
+        id: record.id,
+        name: pick('폐기된 암호화 파일', 'Revoked encrypted file'),
+        type: 'application/octet-stream',
+        size: Number(record.ciphertext_bytes || 0),
+        revoked: true,
+      };
+    }
+    const wrappingKey = await deriveVaultWrappingKey();
+    const rawKey = await decryptBytes(
+      wrappingKey,
+      base64ToBytes(record.wrapped_key_iv),
+      base64ToBytes(record.wrapped_key_ciphertext),
+    );
+    const key = await window.crypto.subtle.importKey(
+      'raw',
+      rawKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt'],
+    );
+    const metadataBytes = await decryptBytes(
+      key,
+      base64ToBytes(record.metadata_iv),
+      base64ToBytes(record.metadata_ciphertext),
+    );
+    const metadata = JSON.parse(decoder.decode(metadataBytes));
+    return {
+      id: record.id,
+      key,
+      iv: base64ToBytes(record.file_iv),
+      name: String(metadata.name || pick('암호화 파일', 'Encrypted file')),
+      type: String(metadata.type || 'application/octet-stream'),
+      size: Number(metadata.size || Math.max(0, Number(record.ciphertext_bytes || 16) - 16)),
+      objectPath: record.object_path,
+      ciphertextSha256: record.ciphertext_sha256,
+      remote: true,
+      revoked: false,
+    };
+  };
+
+  const loadPersistentVaultFiles = async () => {
+    if (activeIdentity?.mode !== 'SUPABASE') return;
+    setLocalizedText(fileStatus, '서버 암호문 목록 동기화 중', 'Syncing stored ciphertext');
+    const records = await window.vaultIdentity.listVaultFiles(
+      activeIdentity.organization.id,
+      activeIdentity.device.id,
+    );
+    vaultItems.clear();
+    vaultList?.replaceChildren();
+    for (const record of [...records].reverse()) {
+      const item = await unwrapVaultFile(record);
+      vaultItems.set(item.id, item);
+      appendVaultItem(item.id, item, { remote: true, revoked: item.revoked });
+    }
+    if (!records.length && vaultList) {
+      const empty = document.createElement('p');
+      empty.className = 'vault-list__empty';
+      empty.textContent = pick('아직 보관된 암호화 파일이 없습니다.', 'No encrypted files are stored yet.');
+      vaultList.append(empty);
+    }
+    setLocalizedText(
+      fileStatus,
+      `${records.length}개 암호화 파일 동기화`,
+      `${records.length} encrypted file${records.length === 1 ? '' : 's'} synced`,
+    );
   };
 
   const clearIssuedCredentials = () => {
@@ -1177,28 +1304,97 @@
     }
 
     setLocalizedText(fileStatus, '업로드 전 암호화 중', 'Encrypting before upload');
+    let uploadedObjectPath = '';
     try {
-      const key = await createKey();
+      const key = activeIdentity?.mode === 'SUPABASE'
+        ? await createPortableFileKey()
+        : await createKey();
       const plainBytes = new Uint8Array(await file.arrayBuffer());
       const encrypted = await encryptBytes(key, plainBytes);
-      const id = makeId(6);
-      vaultItems.set(id, {
+      const id = activeIdentity?.mode === 'SUPABASE'
+        ? window.crypto.randomUUID()
+        : makeId(6);
+      const item = {
         key,
         iv: encrypted.iv,
         cipher: encrypted.cipher,
         name: file.name,
         type: file.type,
-      });
+        size: file.size,
+      };
+
+      if (activeIdentity?.mode === 'SUPABASE') {
+        const metadata = encoder.encode(JSON.stringify({
+          name: file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+        }));
+        const encryptedMetadata = await encryptBytes(key, metadata);
+        const rawKey = new Uint8Array(await window.crypto.subtle.exportKey('raw', key));
+        const wrappingKey = await deriveVaultWrappingKey();
+        const wrappedKey = await encryptBytes(wrappingKey, rawKey);
+        uploadedObjectPath = `${activeIdentity.organization.id}/${activeIdentity.userId}/${id}.vault`;
+        const ciphertextSha256 = await digestBase64(encrypted.cipher);
+        await window.vaultIdentity.uploadVaultObject(
+          uploadedObjectPath,
+          new Blob([encrypted.cipher], { type: 'application/octet-stream' }),
+        );
+        await window.vaultIdentity.registerVaultFile({
+          requested_file_id: id,
+          requested_organization_id: activeIdentity.organization.id,
+          requested_device_id: activeIdentity.device.id,
+          requested_object_path: uploadedObjectPath,
+          requested_file_iv: bytesToBase64(encrypted.iv),
+          requested_metadata_iv: bytesToBase64(encryptedMetadata.iv),
+          requested_metadata_ciphertext: bytesToBase64(encryptedMetadata.cipher),
+          requested_ciphertext_bytes: encrypted.cipher.byteLength,
+          requested_ciphertext_sha256: ciphertextSha256,
+          requested_wrapped_key_iv: bytesToBase64(wrappedKey.iv),
+          requested_wrapped_key_ciphertext: bytesToBase64(wrappedKey.cipher),
+        });
+        const protectedKey = await window.crypto.subtle.importKey(
+          'raw',
+          rawKey,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt'],
+        );
+        rawKey.fill(0);
+        Object.assign(item, {
+          key: protectedKey,
+          objectPath: uploadedObjectPath,
+          ciphertextSha256,
+          remote: true,
+        });
+        uploadedObjectPath = '';
+      }
+
+      vaultItems.set(id, item);
       renderPayload(fileOutput, encrypted.payload);
       setLocalizedText(
         fileStatus,
-        `암호화됨 / ${formatSize(encrypted.payload.byteLength)}`,
-        `Encrypted / ${formatSize(encrypted.payload.byteLength)}`,
+        activeIdentity?.mode === 'SUPABASE'
+          ? `서버에 암호문만 보관 / ${formatSize(encrypted.cipher.byteLength)}`
+          : `암호화됨 / ${formatSize(encrypted.payload.byteLength)}`,
+        activeIdentity?.mode === 'SUPABASE'
+          ? `Ciphertext stored / ${formatSize(encrypted.cipher.byteLength)}`
+          : `Encrypted / ${formatSize(encrypted.payload.byteLength)}`,
       );
-      appendVaultItem(id, file);
+      appendVaultItem(id, file, { remote: activeIdentity?.mode === 'SUPABASE' });
       addAudit('FILE_ENCRYPTED', 'DIGITAL VAULT');
     } catch (error) {
-      setLocalizedText(fileStatus, '암호화 실패', 'Encryption failed');
+      if (uploadedObjectPath) {
+        try {
+          await window.vaultIdentity.removeVaultObject(uploadedObjectPath);
+        } catch (cleanupError) {
+          console.error('Vault object cleanup failed', cleanupError);
+        }
+      }
+      setLocalizedText(
+        fileStatus,
+        `파일을 보관하지 못했습니다: ${messageErrorText(error)}`,
+        `File could not be stored: ${messageErrorText(error)}`,
+      );
       console.error('File proof failed', error);
     } finally {
       fileInput.value = '';
@@ -1235,6 +1431,15 @@
       if (messageNetwork) messageNetwork.textContent = 'CONNECTING';
       startTesseraSubscription();
       await loadTesseraContacts();
+      try {
+        await loadPersistentVaultFiles();
+      } catch (error) {
+        setLocalizedText(
+          fileStatus,
+          `디지털 볼트 서버 준비 필요: ${messageErrorText(error)}`,
+          `Digital Vault backend required: ${messageErrorText(error)}`,
+        );
+      }
     } else {
       setLocalizedText(signalSummary, '로컬 암호화 증명 · 네트워크 없음', 'Local encryption proof · no network');
       if (messageNetwork) messageNetwork.textContent = 'DISABLED';

@@ -18,11 +18,11 @@
     >
     <link rel="stylesheet" href="app.css?v=260901-3">
     <link rel="stylesheet" href="../navigation.css?v=260815-1">
-    <script src="../i18n.js?v=260901-1" defer></script>
+    <script src="../i18n.js?v=260901-2" defer></script>
     <script src="config.js?v=260831-2" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
-    <script src="identity.js?v=260901-4" defer></script>
-    <script src="app.js?v=260901-4" defer></script>
+    <script src="identity.js?v=260901-5" defer></script>
+    <script src="app.js?v=260901-5" defer></script>
     <script src="../navigation.js?v=260815-1" defer></script>
   </head>
   <body>
@@ -344,14 +344,14 @@
             <header class="view-title">
               <p>02 / Secure Archive</p>
               <h2 id="archive-title">Digital<br>Vault</h2>
-              <span>Per-file key · Memory only</span>
+              <span>Per-file key · Device wrapped</span>
             </header>
 
             <label class="file-drop" for="vault-file">
               <input id="vault-file" type="file" data-file-input disabled>
               <span>Choose a local file</span>
               <strong>파일을 선택하면 업로드 전에 브라우저에서 암호화합니다.</strong>
-              <em>Maximum 10 MB · No network request</em>
+              <em>Maximum 10 MB · Client-side encryption</em>
             </label>
 
             <div class="vault-list" data-vault-list aria-live="polite">
@@ -368,9 +368,9 @@
               파일을 선택하면 저장소에 전달될 암호화 payload의 일부가 표시됩니다.
             </div>
             <dl>
-              <div><dt>Object storage</dt><dd>Not connected</dd></div>
-              <div><dt>File key</dt><dd>Per item / Non-exportable</dd></div>
-              <div><dt>Retention</dt><dd>Session only</dd></div>
+              <div><dt>Object storage</dt><dd>Private / Ciphertext only</dd></div>
+              <div><dt>File key</dt><dd>Per item / Device wrapped</dd></div>
+              <div><dt>Retention</dt><dd>Persistent ciphertext</dd></div>
             </dl>
           </aside>
         </section>

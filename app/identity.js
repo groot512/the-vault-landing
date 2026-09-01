@@ -148,6 +148,53 @@
       if (error) throw error;
       return Array.isArray(data) ? data : [];
     },
+    uploadVaultObject: async (objectPath, ciphertext) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.storage
+        .from('vault-objects')
+        .upload(objectPath, ciphertext, {
+          contentType: 'application/octet-stream',
+          cacheControl: '0',
+          upsert: false,
+        });
+      if (error) throw error;
+      return data;
+    },
+    removeVaultObject: async (objectPath) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.storage.from('vault-objects').remove([objectPath]);
+      if (error) throw error;
+      return data;
+    },
+    registerVaultFile: async (record) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('register_vault_file', record);
+      if (error) throw error;
+      return data;
+    },
+    listVaultFiles: async (organizationId, deviceId) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('list_vault_files', {
+        requested_organization_id: organizationId,
+        requested_device_id: deviceId,
+      });
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    },
+    downloadVaultObject: async (objectPath) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.storage.from('vault-objects').download(objectPath);
+      if (error) throw error;
+      return data;
+    },
+    revokeVaultFile: async (fileId) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('revoke_vault_file', {
+        requested_file_id: fileId,
+      });
+      if (error) throw error;
+      return data;
+    },
     acknowledgeTesseraMessages: async ({ organizationId, senderId, recipientDeviceId, state }) => {
       await verifyCurrentActor();
       const { data, error } = await client.rpc('acknowledge_tessera_messages', {
