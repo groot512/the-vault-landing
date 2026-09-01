@@ -172,6 +172,17 @@
       if (error) throw error;
       return data;
     },
+    shareVaultFile: async ({ fileId, recipientId, wrappingDeviceId, envelopes }) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('share_vault_file', {
+        requested_file_id: fileId,
+        requested_recipient_id: recipientId,
+        requested_wrapping_device_id: wrappingDeviceId,
+        requested_envelopes: envelopes,
+      });
+      if (error) throw error;
+      return data;
+    },
     listVaultFiles: async (organizationId, deviceId) => {
       await verifyCurrentActor();
       const { data, error } = await client.rpc('list_vault_files', {

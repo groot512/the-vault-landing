@@ -936,6 +936,7 @@ label:has(input:focus-visible) {
 
 .composer > div {
   display: flex;
+  gap: 1rem;
   justify-content: space-between;
   align-items: center;
   padding-top: 0.8rem;
@@ -943,11 +944,44 @@ label:has(input:focus-visible) {
 }
 
 .composer > div > span {
+  margin-right: auto;
   color: var(--quiet-on-dark);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.66rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.composer .composer__attachment {
+  color: var(--gold-on-dark);
+}
+
+.message__attachment {
+  display: grid;
+  width: 100%;
+  gap: 0.35rem;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message__attachment span,
+.message__attachment small {
+  color: inherit;
+  opacity: 0.7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.message__attachment strong {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .composer button {

@@ -9,6 +9,8 @@
   const messageForm = document.querySelector('[data-message-form]');
   const messageStream = document.querySelector('[data-message-stream]');
   const messageInput = document.querySelector('#message-input');
+  const messageFileInput = document.querySelector('[data-message-file-input]');
+  const messageFileTrigger = document.querySelector('[data-message-file-trigger]');
   const contactSelect = document.querySelector('[data-contact-select]');
   const contactRefresh = document.querySelector('[data-contact-refresh]');
   const contactSearch = document.querySelector('[data-contact-search]');
@@ -140,7 +142,7 @@
     cipher,
   );
 
-  const deriveTesseraKey = async (contact) => {
+  const derivePeerKey = async (contact, info) => {
     const peerKey = await window.crypto.subtle.importKey(
       'jwk',
       contact.publicKeyJwk,
@@ -168,9 +170,13 @@
       name: 'HKDF',
       hash: 'SHA-256',
       salt,
-      info: encoder.encode('TESSERA-MESSAGE-MVP-V1'),
+      info: encoder.encode(info),
     }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   };
+
+  const deriveTesseraKey = (contact) => derivePeerKey(contact, 'TESSERA-MESSAGE-MVP-V1');
+
+  const deriveVaultShareKey = (contact) => derivePeerKey(contact, 'TESSERA-VAULT-FILE-KEY-V1');
 
   const deriveVaultWrappingKey = () => deriveTesseraKey({
     deviceId: activeIdentity.device.id,
@@ -355,6 +361,7 @@
     system = false,
     deliveredAt = null,
     readAt = null,
+    attachment = null,
   } = {}) => {
     if (id && renderedMessageIds.has(id)) return;
     if (id) renderedMessageIds.add(id);
@@ -366,7 +373,25 @@
     const sender = document.createElement('span');
     sender.textContent = `${failed ? 'TRUST KERNEL' : senderName} · ${formatMessageTime(createdAt)}`;
     const body = document.createElement('p');
-    body.textContent = text;
+    if (attachment) {
+      const attachmentButton = document.createElement('button');
+      attachmentButton.type = 'button';
+      attachmentButton.className = 'message__attachment';
+      attachmentButton.innerHTML = `<span>${pick('암호화 파일', 'Encrypted file')}</span><strong></strong><small>${pick('디지털 볼트에서 열기', 'Open in Digital Vault')} →</small>`;
+      attachmentButton.querySelector('strong').textContent = attachment.name;
+      attachmentButton.addEventListener('click', async () => {
+        showView('archive');
+        window.history.replaceState(null, '', '#archive');
+        try {
+          await loadPersistentVaultFiles();
+        } catch (error) {
+          setLocalizedText(fileStatus, `파일 목록을 불러오지 못했습니다: ${messageErrorText(error)}`, `Could not load files: ${messageErrorText(error)}`);
+        }
+      });
+      body.appendChild(attachmentButton);
+    } else {
+      body.textContent = text;
+    }
     message.append(sender, body);
     if (mine && !system && !failed) {
       const state = document.createElement('small');
@@ -452,15 +477,32 @@
     }
     try {
       const plain = await decryptTesseraMessage(message);
+      let attachment = null;
+      try {
+        const parsed = JSON.parse(plain);
+        if (parsed?.v === 1 && parsed?.kind === 'vault-file' && parsed?.fileId && parsed?.name) {
+          attachment = parsed;
+        }
+      } catch {
+        // Normal text messages are intentionally not JSON.
+      }
       const mine = message.sender_id === actorId;
-      appendMessage(plain, {
+      appendMessage(attachment ? attachment.name : plain, {
         mine,
         sender: mine ? activeIdentity.displayName : activeContact.vaultId,
         createdAt: message.created_at,
         id: displayId,
         deliveredAt: message.delivered_at,
         readAt: message.read_at,
+        attachment,
       });
+      if (attachment && !mine) {
+        try {
+          await loadPersistentVaultFiles();
+        } catch (error) {
+          console.warn('Shared vault file could not be synchronized:', messageErrorText(error));
+        }
+      }
       if (!mine && acknowledge) await acknowledgeLoadedConversation();
     } catch {
       appendMessage(
@@ -601,6 +643,7 @@
       button.addEventListener('click', () => {
         activeContact = contact;
         contactSelect.value = contact.deviceId;
+        messageFileTrigger?.removeAttribute('disabled');
         renderContactDirectory();
         renderConversationHead();
         void loadConversation();
@@ -631,6 +674,7 @@
         renderContactDirectory();
         renderConversationHead();
         messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+        messageFileTrigger?.setAttribute('disabled', '');
         setMessageFeedback(
           directoryPeople().length
             ? '구성원은 보이지만 등록된 기기가 없습니다. 상대방이 다시 로그인해 기기를 등록해야 합니다.'
@@ -657,8 +701,10 @@
       renderConversationHead();
       await loadConversation();
       messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
+      messageFileTrigger?.removeAttribute('disabled');
     } catch (error) {
       messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+      messageFileTrigger?.setAttribute('disabled', '');
       setMessageFeedback(
         `메시지 기능을 준비하지 못했습니다: ${messageErrorText(error)}`,
         `Messaging could not be prepared: ${messageErrorText(error)}`,
@@ -688,6 +734,7 @@
         if (status === 'SUBSCRIBED') {
           if (messageNetwork) messageNetwork.textContent = 'ONLINE / SYNCED';
           messageForm?.querySelector('button[type="submit"]')?.toggleAttribute('disabled', !activeContact);
+          messageFileTrigger?.toggleAttribute('disabled', !activeContact);
           if (realtimeSubscribedOnce && activeContact && !reconnectSyncPromise) {
             reconnectSyncPromise = Promise.all([loadConversation(), loadTesseraSummaries()]).finally(() => {
               reconnectSyncPromise = null;
@@ -703,6 +750,7 @@
 
   contactSelect?.addEventListener('change', () => {
     activeContact = tesseraContacts.find((contact) => contact.deviceId === contactSelect.value) || null;
+    messageFileTrigger?.toggleAttribute('disabled', !activeContact);
     renderContactDirectory();
     renderConversationHead();
     void loadConversation();
@@ -728,6 +776,7 @@
   window.addEventListener('offline', () => {
     if (messageNetwork) messageNetwork.textContent = 'OFFLINE';
     messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+    messageFileTrigger?.setAttribute('disabled', '');
     setMessageFeedback(
       '네트워크 연결이 끊겼습니다. 작성 중인 내용은 유지되며 재연결 후 대화를 동기화합니다.',
       'You are offline. Your draft is preserved and the conversation will sync after reconnecting.',
@@ -780,6 +829,42 @@
     }
   });
 
+  const activeRecipientDevices = () => [...new Map(
+    tesseraContacts
+      .filter((contact) => contact.userId === activeContact?.userId && contact.deviceId)
+      .map((contact) => [contact.deviceId, contact]),
+  ).values()];
+
+  const sendTesseraPayload = async (plainBytes) => {
+    if (!activeContact) throw new Error('대화 상대 기기를 선택하세요.');
+    const recipientDevices = activeRecipientDevices();
+    if (!recipientDevices.length) throw new Error('상대방의 활성 기기가 없습니다.');
+    const messageGroupId = window.crypto.randomUUID();
+    const envelopes = [];
+    const encryptedPayloads = [];
+    for (const contact of recipientDevices) {
+      const key = await deriveTesseraKey(contact);
+      const encrypted = await encryptBytes(key, plainBytes);
+      encryptedPayloads.push(encrypted.payload);
+      envelopes.push({
+        message_group_id: messageGroupId,
+        organization_id: activeIdentity.organization.id,
+        sender_id: activeIdentity.userId,
+        recipient_id: activeContact.userId,
+        sender_device_id: activeIdentity.device.id,
+        recipient_device_id: contact.deviceId,
+        algorithm: 'ECDH-P256/HKDF-SHA256/AES-256-GCM',
+        iv: bytesToBase64(encrypted.iv),
+        ciphertext: bytesToBase64(encrypted.cipher),
+      });
+    }
+    renderPayload(boundaryOutput, encryptedPayloads[0]);
+    const storedMessages = await window.vaultIdentity.sendTesseraMessages(envelopes);
+    for (const stored of storedMessages) await renderRemoteMessage(stored);
+    await loadTesseraSummaries();
+    return { recipientDevices, encryptedPayloads };
+  };
+
   messageForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const plain = messageInput?.value.trim();
@@ -800,36 +885,7 @@
 
     try {
       if (activeIdentity?.mode === 'SUPABASE') {
-        if (!activeContact) throw new Error('대화 상대 기기를 선택하세요.');
-        const recipientDevices = [...new Map(
-          tesseraContacts
-            .filter((contact) => contact.userId === activeContact.userId && contact.deviceId)
-            .map((contact) => [contact.deviceId, contact]),
-        ).values()];
-        if (!recipientDevices.length) throw new Error('상대방의 활성 기기가 없습니다.');
-        const messageGroupId = window.crypto.randomUUID();
-        const envelopes = [];
-        const encryptedPayloads = [];
-        for (const contact of recipientDevices) {
-          const key = await deriveTesseraKey(contact);
-          const encrypted = await encryptBytes(key, plainBytes);
-          encryptedPayloads.push(encrypted.payload);
-          envelopes.push({
-            message_group_id: messageGroupId,
-            organization_id: activeIdentity.organization.id,
-            sender_id: activeIdentity.userId,
-            recipient_id: activeContact.userId,
-            sender_device_id: activeIdentity.device.id,
-            recipient_device_id: contact.deviceId,
-            algorithm: 'ECDH-P256/HKDF-SHA256/AES-256-GCM',
-            iv: bytesToBase64(encrypted.iv),
-            ciphertext: bytesToBase64(encrypted.cipher),
-          });
-        }
-        renderPayload(boundaryOutput, encryptedPayloads[0]);
-        const storedMessages = await window.vaultIdentity.sendTesseraMessages(envelopes);
-        for (const stored of storedMessages) await renderRemoteMessage(stored);
-        await loadTesseraSummaries();
+        const { recipientDevices, encryptedPayloads } = await sendTesseraPayload(plainBytes);
         const totalCiphertextBytes = encryptedPayloads.reduce((total, payload) => total + payload.byteLength, 0);
         setLocalizedText(
           boundaryStatus,
@@ -907,7 +963,7 @@
 
   const revokeVaultItem = async (id, row) => {
     const item = vaultItems.get(id);
-    if (!item) return;
+    if (!item || item.isOwner === false) return;
     if (item.remote) {
       setLocalizedText(fileStatus, '접근키 폐기 중', 'Revoking file key');
       await window.vaultIdentity.revokeVaultFile(id);
@@ -934,10 +990,10 @@
       state,
       options.revoked
         ? '접근키 폐기 / 접근 불가'
-        : `${options.remote ? '서버 암호문' : '암호화됨'} / ${formatSize(file.size)}`,
+        : `${options.isOwner === false ? '받은 암호화 파일' : (options.remote ? '서버 암호문' : '암호화됨')} / ${formatSize(file.size)}`,
       options.revoked
         ? 'Key revoked / inaccessible'
-        : `${options.remote ? 'Stored ciphertext' : 'Encrypted'} / ${formatSize(file.size)}`,
+        : `${options.isOwner === false ? 'Received encrypted file' : (options.remote ? 'Stored ciphertext' : 'Encrypted')} / ${formatSize(file.size)}`,
     );
     const name = document.createElement('strong');
     name.textContent = file.name;
@@ -979,12 +1035,14 @@
         );
       }
     });
-    actions.append(download, revoke);
+    actions.appendChild(download);
+    if (options.isOwner !== false) actions.appendChild(revoke);
     row.append(info, actions);
     vaultList?.prepend(row);
   };
 
   const unwrapVaultFile = async (record) => {
+    const isOwner = !record.owner_id || record.owner_id === activeIdentity.userId;
     if (record.revoked_at || !record.wrapped_key_ciphertext) {
       return {
         id: record.id,
@@ -992,21 +1050,24 @@
         type: 'application/octet-stream',
         size: Number(record.ciphertext_bytes || 0),
         revoked: true,
+        isOwner,
       };
     }
-    const wrappingKey = await deriveVaultWrappingKey();
-    const rawKey = await decryptBytes(
+    const wrappingKey = isOwner
+      ? await deriveVaultWrappingKey()
+      : await deriveVaultShareKey({
+        deviceId: record.wrapping_device_id,
+        publicKeyJwk: record.wrapping_public_key_jwk,
+      });
+    const rawKey = new Uint8Array(await decryptBytes(
       wrappingKey,
       base64ToBytes(record.wrapped_key_iv),
       base64ToBytes(record.wrapped_key_ciphertext),
-    );
+    ));
     const key = await window.crypto.subtle.importKey(
-      'raw',
-      rawKey,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt', 'decrypt'],
+      'raw', rawKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'],
     );
+    rawKey.fill(0);
     const metadataBytes = await decryptBytes(
       key,
       base64ToBytes(record.metadata_iv),
@@ -1024,6 +1085,8 @@
       ciphertextSha256: record.ciphertext_sha256,
       remote: true,
       revoked: false,
+      ownerId: record.owner_id,
+      isOwner,
     };
   };
 
@@ -1039,7 +1102,7 @@
     for (const record of [...records].reverse()) {
       const item = await unwrapVaultFile(record);
       vaultItems.set(item.id, item);
-      appendVaultItem(item.id, item, { remote: true, revoked: item.revoked });
+      appendVaultItem(item.id, item, { remote: true, revoked: item.revoked, isOwner: item.isOwner });
     }
     if (!records.length && vaultList) {
       const empty = document.createElement('p');
@@ -1294,17 +1357,10 @@
   memberRefresh?.addEventListener('click', () => loadMembers(true));
   window.addEventListener('vault:languagechange', renderMembers);
 
-  fileInput?.addEventListener('change', async () => {
-    const [file] = fileInput.files || [];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setLocalizedText(fileStatus, '파일이 10MB를 초과합니다', 'File exceeds 10 MB');
-      fileInput.value = '';
-      return;
-    }
-
-    setLocalizedText(fileStatus, '업로드 전 암호화 중', 'Encrypting before upload');
+  const storeVaultFile = async (file, recipientDevices = []) => {
     let uploadedObjectPath = '';
+    let registered = false;
+    let rawKey = null;
     try {
       const key = activeIdentity?.mode === 'SUPABASE'
         ? await createPortableFileKey()
@@ -1330,7 +1386,7 @@
           size: file.size,
         }));
         const encryptedMetadata = await encryptBytes(key, metadata);
-        const rawKey = new Uint8Array(await window.crypto.subtle.exportKey('raw', key));
+        rawKey = new Uint8Array(await window.crypto.subtle.exportKey('raw', key));
         const wrappingKey = await deriveVaultWrappingKey();
         const wrappedKey = await encryptBytes(wrappingKey, rawKey);
         uploadedObjectPath = `${activeIdentity.organization.id}/${activeIdentity.userId}/${id}.vault`;
@@ -1352,6 +1408,25 @@
           requested_wrapped_key_iv: bytesToBase64(wrappedKey.iv),
           requested_wrapped_key_ciphertext: bytesToBase64(wrappedKey.cipher),
         });
+        registered = true;
+        if (recipientDevices.length) {
+          const envelopes = [];
+          for (const contact of recipientDevices) {
+            const shareKey = await deriveVaultShareKey(contact);
+            const wrappedShareKey = await encryptBytes(shareKey, rawKey);
+            envelopes.push({
+              recipient_device_id: contact.deviceId,
+              wrapped_key_iv: bytesToBase64(wrappedShareKey.iv),
+              wrapped_key_ciphertext: bytesToBase64(wrappedShareKey.cipher),
+            });
+          }
+          await window.vaultIdentity.shareVaultFile({
+            fileId: id,
+            recipientId: activeContact.userId,
+            wrappingDeviceId: activeIdentity.device.id,
+            envelopes,
+          });
+        }
         const protectedKey = await window.crypto.subtle.importKey(
           'raw',
           rawKey,
@@ -1359,16 +1434,43 @@
           false,
           ['encrypt', 'decrypt'],
         );
-        rawKey.fill(0);
         Object.assign(item, {
           key: protectedKey,
           objectPath: uploadedObjectPath,
           ciphertextSha256,
           remote: true,
+          ownerId: activeIdentity.userId,
+          isOwner: true,
         });
         uploadedObjectPath = '';
       }
+      return { id, item, encrypted };
+    } catch (error) {
+      if (uploadedObjectPath && !registered) {
+        try {
+          await window.vaultIdentity.removeVaultObject(uploadedObjectPath);
+        } catch (cleanupError) {
+          console.error('Vault object cleanup failed', cleanupError);
+        }
+      }
+      throw error;
+    } finally {
+      rawKey?.fill(0);
+    }
+  };
 
+  fileInput?.addEventListener('change', async () => {
+    const [file] = fileInput.files || [];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setLocalizedText(fileStatus, '파일이 10MB를 초과합니다', 'File exceeds 10 MB');
+      fileInput.value = '';
+      return;
+    }
+
+    setLocalizedText(fileStatus, '업로드 전 암호화 중', 'Encrypting before upload');
+    try {
+      const { id, item, encrypted } = await storeVaultFile(file);
       vaultItems.set(id, item);
       renderPayload(fileOutput, encrypted.payload);
       setLocalizedText(
@@ -1380,24 +1482,71 @@
           ? `Ciphertext stored / ${formatSize(encrypted.cipher.byteLength)}`
           : `Encrypted / ${formatSize(encrypted.payload.byteLength)}`,
       );
-      appendVaultItem(id, file, { remote: activeIdentity?.mode === 'SUPABASE' });
+      appendVaultItem(id, file, { remote: activeIdentity?.mode === 'SUPABASE', isOwner: true });
       addAudit('FILE_ENCRYPTED', 'DIGITAL VAULT');
     } catch (error) {
-      if (uploadedObjectPath) {
-        try {
-          await window.vaultIdentity.removeVaultObject(uploadedObjectPath);
-        } catch (cleanupError) {
-          console.error('Vault object cleanup failed', cleanupError);
-        }
-      }
-      setLocalizedText(
-        fileStatus,
-        `파일을 보관하지 못했습니다: ${messageErrorText(error)}`,
-        `File could not be stored: ${messageErrorText(error)}`,
-      );
+      setLocalizedText(fileStatus, `파일을 보관하지 못했습니다: ${messageErrorText(error)}`, `File could not be stored: ${messageErrorText(error)}`);
       console.error('File proof failed', error);
     } finally {
       fileInput.value = '';
+    }
+  });
+
+  messageFileTrigger?.addEventListener('click', () => {
+    if (!activeContact) {
+      setMessageFeedback('먼저 대화 상대를 선택하세요.', 'Choose a conversation first.', true);
+      return;
+    }
+    messageFileInput?.click();
+  });
+
+  messageFileInput?.addEventListener('change', async () => {
+    const [file] = messageFileInput.files || [];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setMessageFeedback('첨부 파일은 10MB 이하여야 합니다.', 'Attachment must be 10 MB or smaller.', true);
+      messageFileInput.value = '';
+      return;
+    }
+    messageFileTrigger.disabled = true;
+    setMessageFeedback('파일을 암호화하고 상대방 기기별 접근키를 만들고 있습니다.', 'Encrypting the file and preparing per-device access keys.');
+    try {
+      if (activeIdentity?.mode !== 'SUPABASE') throw new Error('파일 공유는 서버 인증 모드에서 사용할 수 있습니다.');
+      const recipientDevices = activeRecipientDevices();
+      if (!recipientDevices.length) throw new Error('상대방의 활성 기기가 없습니다.');
+      const { id, item, encrypted } = await storeVaultFile(file, recipientDevices);
+      vaultItems.set(id, item);
+      appendVaultItem(id, file, { remote: true, isOwner: true });
+      renderPayload(fileOutput, encrypted.payload);
+      const reference = encoder.encode(JSON.stringify({
+        v: 1,
+        kind: 'vault-file',
+        fileId: id,
+        name: file.name,
+        size: file.size,
+      }));
+      const sent = await sendTesseraPayload(reference);
+      setLocalizedText(
+        boundaryStatus,
+        `${sent.recipientDevices.length}개 기기 파일 참조 암호문 저장`,
+        `Encrypted file reference stored for ${sent.recipientDevices.length} device${sent.recipientDevices.length === 1 ? '' : 's'}`,
+      );
+      setMessageFeedback(
+        `${file.name} · ${sent.recipientDevices.length}개 기기에 암호화 전달됨`,
+        `${file.name} · encrypted for ${sent.recipientDevices.length} device${sent.recipientDevices.length === 1 ? '' : 's'}`,
+      );
+      setLocalizedText(fileStatus, '파일 공유용 암호문 보관 완료', 'Shared ciphertext stored');
+      addAudit('FILE_SHARED', 'TESSERA / DIGITAL VAULT');
+    } catch (error) {
+      setMessageFeedback(`파일을 보내지 못했습니다: ${messageErrorText(error)}`, `File could not be sent: ${messageErrorText(error)}`, true);
+      try {
+        await loadPersistentVaultFiles();
+      } catch {
+        // The owner copy is recovered on the next vault refresh.
+      }
+    } finally {
+      messageFileInput.value = '';
+      messageFileTrigger.disabled = !activeContact || !navigator.onLine;
     }
   });
 
@@ -1405,6 +1554,7 @@
     if (!window.crypto?.subtle) {
       setLocalizedText(keyState, 'Web Crypto를 사용할 수 없음', 'Web Crypto unavailable');
       messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+      messageFileTrigger?.setAttribute('disabled', '');
       fileInput?.setAttribute('disabled', '');
       return;
     }
@@ -1461,6 +1611,7 @@
       }
       setMessageFeedback('로컬 프리뷰에서는 서버 전송 없이 암호화 왕복만 검증합니다.', 'Local preview verifies encryption round-trip without a server.');
       messageForm?.querySelector('button[type="submit"]')?.removeAttribute('disabled');
+      messageFileTrigger?.setAttribute('disabled', '');
     }
     if (adminAccess && window.location.hash === '#admin') showView('admin');
   };
@@ -1476,6 +1627,7 @@
   window.addEventListener('vault:identity-conflict', () => {
     unsubscribeMessages?.();
     messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+    messageFileTrigger?.setAttribute('disabled', '');
     if (messageNetwork) messageNetwork.textContent = 'SESSION CONFLICT';
     setMessageFeedback(
       '다른 탭에서 계정이 변경되었습니다. 두 계정 테스트는 서로 다른 브라우저 또는 Chrome 프로필에서 진행하세요.',
