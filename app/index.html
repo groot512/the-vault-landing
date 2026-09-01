@@ -18,7 +18,7 @@
     >
     <link rel="stylesheet" href="app.css?v=260901-3">
     <link rel="stylesheet" href="../navigation.css?v=260815-1">
-    <script src="../i18n.js?v=260831-1" defer></script>
+    <script src="../i18n.js?v=260901-1" defer></script>
     <script src="config.js?v=260831-2" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
     <script src="identity.js?v=260901-4" defer></script>
@@ -33,9 +33,9 @@
       <button class="global-nav__toggle" type="button" aria-expanded="false" aria-controls="global-menu" data-global-nav-toggle><span class="global-nav__toggle-open">메뉴</span><span class="global-nav__toggle-close">닫기</span></button>
       <nav class="global-nav__menu" id="global-menu" aria-label="더 볼트 전체 메뉴">
         <div class="global-nav__item"><a class="global-nav__link" href="../#philosophy">철학</a></div><div class="global-nav__item"><a class="global-nav__link" href="../#vision">비전</a></div><div class="global-nav__item"><a class="global-nav__link" href="../#approach">접근 방식</a></div>
-        <div class="global-nav__item"><a class="global-nav__trigger" href="../tessera/">테세러 ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-tessera" data-submenu-toggle><span class="sr-only">테세러 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-tessera"><a href="../tessera/"><span>00</span>개요</a><a href="../tessera/#proof"><span>01</span>기술 증명</a><a href="../tessera/#architecture"><span>02</span>구조</a><a href="../tessera/#status"><span>03</span>개발 현황</a></div></div>
+        <div class="global-nav__item"><a class="global-nav__trigger" href="../tessera/">테세라 ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-tessera" data-submenu-toggle><span class="sr-only">테세라 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-tessera"><a href="../tessera/"><span>00</span>개요</a><a href="../tessera/#proof"><span>01</span>기술 증명</a><a href="../tessera/#architecture"><span>02</span>구조</a><a href="../tessera/#status"><span>03</span>개발 현황</a></div></div>
         <div class="global-nav__item"><a class="global-nav__trigger" href="../digital-vault/">디지털 볼트 ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-digital" data-submenu-toggle><span class="sr-only">디지털 볼트 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-digital"><a href="../digital-vault/"><span>00</span>개요</a><a href="../digital-vault/#proof"><span>01</span>기술 증명</a><a href="../digital-vault/#architecture"><span>02</span>구조</a><a href="../digital-vault/#status"><span>03</span>개발 현황</a></div></div>
-        <div class="global-nav__item is-current"><a class="global-nav__trigger" href="./">트러스트 랩 ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-lab" data-submenu-toggle><span class="sr-only">트러스트 랩 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-lab"><a href="#signal"><span>01</span>테세러 증명</a><a href="#archive"><span>02</span>볼트 증명</a><a href="#audit"><span>03</span>감사 기록</a></div></div>
+        <div class="global-nav__item is-current"><a class="global-nav__trigger" href="./">트러스트 랩 ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-lab" data-submenu-toggle><span class="sr-only">트러스트 랩 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-lab"><a href="#signal"><span>01</span>테세라 증명</a><a href="#archive"><span>02</span>볼트 증명</a><a href="#audit"><span>03</span>감사 기록</a></div></div>
       </nav>
       <button class="global-nav__language" type="button" data-language-toggle aria-label="영어로 보기"><span data-language-current>KO</span><i aria-hidden="true">/</i><span data-language-next>EN</span></button>
     </header>
@@ -189,7 +189,7 @@
           <nav aria-label="Trust Lab 기능">
             <button class="lab-nav is-active" type="button" data-view-target="signal">
               <span>01</span>
-              <strong>테세러</strong>
+              <strong>테세라</strong>
               <em>Secure Signal</em>
             </button>
             <button class="lab-nav" type="button" data-view-target="archive">
@@ -238,16 +238,16 @@
 
         <section class="lab-view lab-view--tessera is-active" id="signal" data-view="signal" aria-labelledby="signal-title">
           <div class="tessera-messenger" data-tessera-shell>
-            <aside class="tessera-directory" aria-label="테세러 대화 목록">
+            <aside class="tessera-directory" aria-label="테세라 대화 목록">
               <header class="tessera-directory__head">
                 <div>
                   <p>VAULT / SECURE MESSENGER</p>
-                  <h2 id="signal-title">테세러</h2>
+                  <h2 id="signal-title">테세라</h2>
                 </div>
                 <span data-message-network>대기</span>
               </header>
 
-              <section class="tessera-profile" aria-label="내 테세러 프로필">
+              <section class="tessera-profile" aria-label="내 테세라 프로필">
                 <span class="tessera-avatar" data-self-avatar aria-hidden="true">V</span>
                 <div>
                   <strong data-self-nickname>별명 미설정</strong>
@@ -297,7 +297,7 @@
 
               <div class="message-stream" data-message-stream aria-live="polite">
                 <article class="message message--system">
-                  <span>테세러</span>
+                  <span>테세라</span>
                   <p>왼쪽 목록에서 대화할 사람을 선택하세요.</p>
                 </article>
               </div>

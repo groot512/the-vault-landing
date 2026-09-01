@@ -969,6 +969,13 @@ a {
   letter-spacing: -0.075em;
 }
 
+html[lang="ko"] .approach__copy h3 {
+  font-size: clamp(3.4rem, 5.8vw, 8rem);
+  line-height: 1;
+  letter-spacing: -0.085em;
+  white-space: nowrap;
+}
+
 .approach__description {
   max-width: 31rem;
   margin: clamp(2rem, 5vh, 4rem) 0 0 25%;
@@ -1664,6 +1671,10 @@ a {
 
   .approach__copy h3 {
     font-size: clamp(4.3rem, 21vw, 7rem);
+  }
+
+  html[lang="ko"] .approach__copy h3 {
+    font-size: clamp(3.25rem, 14vw, 5.5rem);
   }
 
   .approach__description {

@@ -3,15 +3,15 @@
   const DEFAULT_LANGUAGE = 'ko';
   const pairs = [
     ['더 볼트', 'THE VAULT'],
-    ['테세러', 'TESSERA'],
+    ['테세라', 'TESSERA'],
     ['디지털 볼트', 'DIGITAL VAULT'],
     ['트러스트 랩', 'TRUST LAB'],
     ['더 볼트 룸', 'THE VAULT ROOM'],
     ['더 볼트 전체 메뉴', 'THE VAULT global navigation'],
-    ['테세러 세부 메뉴', 'TESSERA submenu'],
+    ['테세라 세부 메뉴', 'TESSERA submenu'],
     ['디지털 볼트 세부 메뉴', 'DIGITAL VAULT submenu'],
     ['트러스트 랩 세부 메뉴', 'TRUST LAB submenu'],
-    ['테세러 ↗', 'TESSERA ↗'],
+    ['테세라 ↗', 'TESSERA ↗'],
     ['디지털 볼트 ↗', 'DIGITAL VAULT ↗'],
     ['트러스트 랩 ↗', 'TRUST LAB ↗'],
     ['철학', 'Philosophy'],
@@ -21,7 +21,7 @@
     ['기술 증명', 'Proof'],
     ['구조', 'Architecture'],
     ['개발 현황', 'Status'],
-    ['테세러 증명', 'Tessera Proof'],
+    ['테세라 증명', 'Tessera Proof'],
     ['볼트 증명', 'Vault Proof'],
     ['감사 기록', 'Audit'],
     ['메뉴', 'Menu'],
@@ -82,7 +82,7 @@
     ['검증', 'Validate'],
     ['검토', 'Review'],
     ['트러스트 랩 열기', 'Open Trust Lab'],
-    ['테세러로 돌아가기', 'Return to TESSERA'],
+    ['테세라로 돌아가기', 'Return to TESSERA'],
     ['디지털 볼트 보기', 'View DIGITAL VAULT'],
     ['로컬 미리보기', 'Local Preview'],
     ['서버 없이 기기 등록 흐름을 먼저 확인합니다.', 'Preview the device enrollment flow without a server.'],
@@ -162,8 +162,8 @@
     ['암호화할 메시지', 'Message to encrypt'],
     ['보안 상세', 'Security details'],
     ['보안 상세 닫기', 'Close security details'],
-    ['내 테세러 프로필', 'My TESSERA profile'],
-    ['테세러 대화 목록', 'TESSERA conversation list'],
+    ['내 테세라 프로필', 'My TESSERA profile'],
+    ['테세라 대화 목록', 'TESSERA conversation list'],
     ['별명 미설정', 'Nickname not set'],
     ['편집', 'Edit'],
     ['대화에 표시할 별명', 'Nickname shown in conversations'],
@@ -209,10 +209,10 @@
   const normalize = (value) => value.replace(/\s+/g, ' ').trim();
   const koToEn = new Map(pairs.map(([ko, en]) => [normalize(ko), en]));
   const enToKo = new Map(pairs.map(([ko, en]) => [normalize(en), ko]));
-  enToKo.set('Tessera', '테세러');
+  enToKo.set('Tessera', '테세라');
   enToKo.set('Digital Vault', '디지털 볼트');
   enToKo.set('Trust Lab', '트러스트 랩');
-  enToKo.set('Tessera ↗', '테세러 ↗');
+  enToKo.set('Tessera ↗', '테세라 ↗');
   enToKo.set('Digital Vault ↗', '디지털 볼트 ↗');
   enToKo.set('Trust Lab ↗', '트러스트 랩 ↗');
   let language = localStorage.getItem(STORAGE_KEY) === 'en' ? 'en' : DEFAULT_LANGUAGE;
@@ -226,15 +226,15 @@
           ['Digital Vault', '디지털 볼트'],
           ['TRUST LAB', '트러스트 랩'],
           ['Trust Lab', '트러스트 랩'],
-          ['TESSERA', '테세러'],
-          ['Tessera', '테세러'],
+          ['TESSERA', '테세라'],
+          ['Tessera', '테세라'],
           ['THE VAULT', '더 볼트'],
         ]
       : [
           ['더 볼트 룸', 'THE VAULT ROOM'],
           ['디지털 볼트', 'DIGITAL VAULT'],
           ['트러스트 랩', 'TRUST LAB'],
-          ['테세러', 'TESSERA'],
+          ['테세라', 'TESSERA'],
           ['더 볼트', 'THE VAULT'],
         ];
     return replacements.reduce((translated, [from, to]) => translated.split(from).join(to), value);
