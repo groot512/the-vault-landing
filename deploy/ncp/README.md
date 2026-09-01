@@ -87,3 +87,29 @@ sudo systemctl start the-vault-deploy.timer
 3. HTTPS 인증서를 적용한다.
 4. Supabase Edge Function의 허용 Origin에 공식 도메인을 추가한다.
 5. 공식 도메인에서 로그인, TOTP, 관리자 계정 발급과 구성원 관리를 다시 검증한다.
+
+## Mobile Friendly V2 미리보기
+
+V2는 운영 `main`과 다른 Git worktree와 웹 루트를 사용한다.
+
+```text
+GitHub codex/mobile-friendly-v2
+        ↓
+NCP /srv/the-vault/mobile-friendly-v2
+        ↓ publish.sh
+NCP /var/www/the-vault-previews/mobile-v2/current
+        ↓
+/preview/mobile-v2/
+```
+
+이 경로는 비교·검증용이다. 운영 자동 배포의 `current` 링크를 바꾸지 않으며 `main` 공개 화면에도 영향을 주지 않는다.
+
+수동 갱신은 서버에서 다음 순서로 수행한다.
+
+```bash
+sudo -u vault-deploy git -C /srv/the-vault/repository fetch origin codex/mobile-friendly-v2
+sudo -u vault-deploy git -C /srv/the-vault/mobile-friendly-v2 checkout --detach origin/codex/mobile-friendly-v2
+VAULT_WEB_ROOT=/var/www/the-vault-previews/mobile-v2 /srv/the-vault/mobile-friendly-v2/deploy/ncp/publish.sh
+nginx -t
+systemctl reload nginx
+```
