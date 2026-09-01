@@ -1,0 +1,42 @@
+{
+  "id": "./",
+  "name": "THE VAULT",
+  "short_name": "THE VAULT",
+  "description": "테세라 보안메신저와 디지털 볼트를 하나의 기기 보안 경계에서 사용합니다.",
+  "lang": "ko",
+  "start_url": "./#signal",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#171714",
+  "theme_color": "#171714",
+  "categories": ["business", "productivity", "security"],
+  "icons": [
+    {
+      "src": "icons/vault-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/vault-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "테세라",
+      "short_name": "테세라",
+      "url": "./#signal",
+      "icons": [{ "src": "icons/vault-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "디지털 볼트",
+      "short_name": "볼트",
+      "url": "./#archive",
+      "icons": [{ "src": "icons/vault-icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

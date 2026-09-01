@@ -28,6 +28,7 @@
   const authBoundary = document.querySelector('[data-auth-boundary]');
   const authReset = document.querySelector('[data-auth-reset]');
   const signOut = document.querySelector('[data-sign-out]');
+  const passkeySignin = document.querySelector('[data-passkey-signin]');
   const identityName = document.querySelector('[data-identity-name]');
   const identityOrganization = document.querySelector('[data-identity-organization]');
   const identityRole = document.querySelector('[data-identity-role]');
@@ -69,6 +70,15 @@
   };
 
   window.vaultIdentity = Object.freeze({
+    registerPasskey: async () => {
+      await verifyCurrentActor();
+      if (typeof client?.auth?.registerPasskey !== 'function') {
+        throw new Error('이 Supabase 클라이언트에서는 패스키를 사용할 수 없습니다.');
+      }
+      const { data, error } = await client.auth.registerPasskey();
+      if (error) throw error;
+      return data;
+    },
     issueAccount: async (organizationId) => {
       if (!client || currentIdentity?.mode !== 'SUPABASE') {
         throw new Error('Supabase 관리자 세션이 필요합니다.');
@@ -252,7 +262,9 @@
     },
   });
 
-  const hasRemoteConfig = Boolean(
+  const localPreviewRequested = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)
+    && new URLSearchParams(window.location.search).get('preview') === 'local';
+  const hasRemoteConfig = !localPreviewRequested && Boolean(
     config.supabaseUrl
       && config.supabasePublishableKey
       && /^https:\/\/.+\.supabase\.co$/.test(config.supabaseUrl),
@@ -372,7 +384,7 @@
       return;
     }
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0';
     script.crossOrigin = 'anonymous';
     script.onload = () => resolve(window.supabase);
     script.onerror = () => reject(new Error('Supabase client library could not be loaded.'));
@@ -577,6 +589,7 @@
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
+        experimental: { passkey: true },
       },
     });
     client.auth.onAuthStateChange((_event, session) => {
@@ -587,6 +600,9 @@
     });
     modeLabel.textContent = 'SUPABASE CONNECTED';
     authBoundary.textContent = 'Supabase Auth + RLS';
+    if (passkeySignin && window.isSecureContext && 'PublicKeyCredential' in window) {
+      passkeySignin.hidden = false;
+    }
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
     if (data.session) {
@@ -653,6 +669,24 @@
       setFeedback(message, true);
     } finally {
       setBusy(authForm, false);
+    }
+  });
+
+  passkeySignin?.addEventListener('click', async () => {
+    if (!client || typeof client.auth.signInWithPasskey !== 'function') return;
+    passkeySignin.disabled = true;
+    setFeedback('이 기기의 지문·Face ID·화면 잠금으로 확인하세요.');
+    try {
+      const { data, error } = await client.auth.signInWithPasskey();
+      if (error) throw error;
+      await continueRemoteSession(data.session);
+    } catch (error) {
+      const disabled = /disabled|not enabled|passkey_disabled/i.test(error.message || '');
+      setFeedback(disabled
+        ? '패스키는 아직 서버에서 활성화되지 않았습니다. 기존 VAULT ID 로그인을 사용하세요.'
+        : (error.message || '패스키 로그인을 완료하지 못했습니다.'), true);
+    } finally {
+      passkeySignin.disabled = false;
     }
   });
 

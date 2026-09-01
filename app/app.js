@@ -39,6 +39,17 @@
   const fileOutput = document.querySelector('[data-file-output]');
   const fileStatus = document.querySelector('[data-file-status]');
   const vaultList = document.querySelector('[data-vault-list]');
+  const mobileViewName = document.querySelector('[data-mobile-view-name]');
+  const mobileIdentity = document.querySelector('[data-mobile-identity]');
+  const mobileDevice = document.querySelector('[data-mobile-device]');
+  const mobileAdmin = document.querySelector('[data-mobile-admin]');
+  const vaultActions = document.querySelector('[data-vault-actions]');
+  const vaultActionsOpen = document.querySelector('[data-vault-actions-open]');
+  const vaultTextForm = document.querySelector('[data-vault-text-form]');
+  const vaultTextCancel = document.querySelector('[data-vault-text-cancel]');
+  const mobileFileInput = document.querySelector('[data-mobile-file-input]');
+  const mobileMediaInput = document.querySelector('[data-mobile-media-input]');
+  const mobileCameraInput = document.querySelector('[data-mobile-camera-input]');
   const auditLedger = document.querySelector('[data-audit-ledger]');
   const adminNav = document.querySelector('[data-admin-nav]');
   const adminIssueForm = document.querySelector('[data-admin-issue-form]');
@@ -82,6 +93,12 @@
     archive: 'DIGITAL VAULT',
     audit: 'AUDIT LEDGER',
     admin: 'ACCESS OFFICE',
+  };
+  const mobileViewNames = {
+    signal: '테세라',
+    archive: '디지털 볼트',
+    audit: '보안 기록',
+    admin: '계정 관리',
   };
 
   const makeId = (length = 8) => {
@@ -226,6 +243,7 @@
       button.setAttribute('aria-pressed', String(isActive));
     });
     if (viewTitle) viewTitle.textContent = viewNames[permittedName] || permittedName;
+    if (mobileViewName) mobileViewName.textContent = mobileViewNames[permittedName] || permittedName;
     if (permittedName === 'admin' && adminAccess) void loadMembers();
   };
 
@@ -1459,12 +1477,10 @@
     }
   };
 
-  fileInput?.addEventListener('change', async () => {
-    const [file] = fileInput.files || [];
+  const handleVaultFile = async (file) => {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
       setLocalizedText(fileStatus, '파일이 10MB를 초과합니다', 'File exceeds 10 MB');
-      fileInput.value = '';
       return;
     }
 
@@ -1487,9 +1503,65 @@
     } catch (error) {
       setLocalizedText(fileStatus, `파일을 보관하지 못했습니다: ${messageErrorText(error)}`, `File could not be stored: ${messageErrorText(error)}`);
       console.error('File proof failed', error);
-    } finally {
-      fileInput.value = '';
     }
+  };
+
+  fileInput?.addEventListener('change', async () => {
+    const [file] = fileInput.files || [];
+    await handleVaultFile(file);
+    fileInput.value = '';
+  });
+
+  [mobileFileInput, mobileMediaInput, mobileCameraInput].forEach((input) => {
+    input?.addEventListener('change', async () => {
+      const [file] = input.files || [];
+      if (vaultActions) vaultActions.hidden = true;
+      await handleVaultFile(file);
+      input.value = '';
+    });
+  });
+
+  vaultActionsOpen?.addEventListener('click', () => {
+    if (!fileInput || fileInput.disabled) return;
+    if (vaultActions) vaultActions.hidden = false;
+    document.documentElement.classList.add('has-mobile-sheet');
+  });
+
+  document.querySelectorAll('[data-vault-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const action = button.dataset.vaultAction;
+      if (action === 'text') {
+        document.querySelector('.mobile-action-list')?.setAttribute('hidden', '');
+        if (vaultTextForm) vaultTextForm.hidden = false;
+        vaultTextForm?.querySelector('textarea')?.focus();
+        return;
+      }
+      const input = action === 'media'
+        ? mobileMediaInput
+        : (action === 'camera' ? mobileCameraInput : mobileFileInput);
+      input?.click();
+    });
+  });
+
+  const resetVaultTextForm = () => {
+    vaultTextForm?.reset();
+    if (vaultTextForm) vaultTextForm.hidden = true;
+    document.querySelector('.mobile-action-list')?.removeAttribute('hidden');
+  };
+
+  vaultTextCancel?.addEventListener('click', resetVaultTextForm);
+
+  vaultTextForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const note = String(new FormData(vaultTextForm).get('note') || '').trim();
+    if (!note) return;
+    const stamp = new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    }).format(new Date()).replace(/[. :]/g, '-').replace(/-+/g, '-');
+    const file = new File([note], `보안-메모-${stamp}.txt`, { type: 'text/plain;charset=utf-8' });
+    resetVaultTextForm();
+    if (vaultActions) vaultActions.hidden = true;
+    await handleVaultFile(file);
   });
 
   messageFileTrigger?.addEventListener('click', () => {
@@ -1563,9 +1635,12 @@
     if (!activeIdentity.vaultId) activeIdentity.vaultId = activeIdentity.displayName;
     adminAccess = identity.mode === 'SUPABASE' && String(identity.role).toLowerCase() === 'admin';
     if (adminNav) adminNav.hidden = !adminAccess;
+    if (mobileAdmin) mobileAdmin.hidden = !adminAccess;
     if (adminOrganization) adminOrganization.textContent = identity.organization.name;
     const shortDeviceId = identity.device.id.split('-')[0].toUpperCase();
     if (deviceId) deviceId.textContent = `${shortDeviceId} / ${identity.device.fingerprint}`;
+    if (mobileIdentity) mobileIdentity.textContent = `@${identity.vaultId}`;
+    if (mobileDevice) mobileDevice.textContent = `${shortDeviceId} · 검증됨`;
     renderSelfProfile();
     messageKey = await createKey();
     setLocalizedText(
