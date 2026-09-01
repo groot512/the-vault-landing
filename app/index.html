@@ -23,13 +23,13 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="app.css?v=260901-5">
+    <link rel="stylesheet" href="app.css?v=260901-6">
     <link rel="stylesheet" href="../navigation.css?v=260815-1">
     <script src="../i18n.js?v=260901-3" defer></script>
     <script src="config.js?v=260831-2" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
     <script src="identity.js?v=260901-7" defer></script>
-    <script src="app.js?v=260901-7" defer></script>
+    <script src="app.js?v=260901-8" defer></script>
     <script src="../navigation.js?v=260815-1" defer></script>
   </head>
   <body>
@@ -363,6 +363,23 @@
 
         <section class="lab-view" id="archive" data-view="archive" aria-labelledby="archive-title" hidden>
           <div class="view-main">
+            <section class="vault-mobile-home" aria-label="나의 디지털 금고">
+              <header>
+                <p>나만의 안전한 공간</p>
+                <h2>무엇을<br>지켜드릴까요?</h2>
+                <span>내용은 이 기기에서 먼저 암호화됩니다.</span>
+              </header>
+              <div class="vault-mobile-summary">
+                <span>보관 중</span><strong data-vault-item-count>0</strong><small>개의 소중한 기록</small>
+              </div>
+              <nav class="vault-service-list" aria-label="디지털 금고 서비스">
+                <button type="button" data-vault-service="password"><span class="vault-service-icon">✦</span><span><strong>패스워드</strong><small>아이디와 비밀번호를 안전하게</small></span><b>›</b></button>
+                <button type="button" data-vault-service="journal"><span class="vault-service-icon">⌁</span><span><strong>내면 일기</strong><small>누구에게도 보여주지 않을 이야기</small></span><b>›</b></button>
+                <button type="button" data-vault-service="memory"><span class="vault-service-icon">◌</span><span><strong>잠긴 추억</strong><small>공유 없이 보관하고 실수로 지우지 않게</small></span><b>›</b></button>
+                <button type="button" data-vault-service="file"><span class="vault-service-icon">↑</span><span><strong>파일 보관</strong><small>문서와 모든 형식의 파일</small></span><b>›</b></button>
+              </nav>
+              <div class="vault-mobile-recent"><span>최근 보관함</span><small>모든 항목</small></div>
+            </section>
             <header class="view-title">
               <p>02 / Secure Archive</p>
               <h2 id="archive-title">Digital<br>Vault</h2>
@@ -511,10 +528,10 @@
           <span class="mobile-tabbar__icon" aria-hidden="true">◫</span><strong>테세라</strong>
         </button>
         <button type="button" data-view-target="archive">
-          <span class="mobile-tabbar__icon" aria-hidden="true">▱</span><strong>디지털 볼트</strong>
+          <span class="mobile-tabbar__icon" aria-hidden="true">▱</span><strong>금고</strong>
         </button>
         <button type="button" data-view-target="audit">
-          <span class="mobile-tabbar__icon" aria-hidden="true">≡</span><strong>기록</strong>
+          <span class="mobile-tabbar__icon" aria-hidden="true">≡</span><strong>활동</strong>
         </button>
         <button type="button" data-mobile-settings-open>
           <span class="mobile-tabbar__icon" aria-hidden="true">···</span><strong>설정</strong>
@@ -529,19 +546,43 @@
             <button type="button" data-sheet-close aria-label="닫기">×</button>
           </header>
           <div class="mobile-action-list">
-            <button type="button" data-vault-action="text"><span aria-hidden="true">T</span><strong>텍스트 보관</strong><small>메모와 복구 정보를 암호화합니다.</small></button>
-            <button type="button" data-vault-action="file"><span aria-hidden="true">↑</span><strong>파일 올리기</strong><small>문서와 모든 일반 파일을 선택합니다.</small></button>
-            <button type="button" data-vault-action="media"><span aria-hidden="true">□</span><strong>사진·영상 선택</strong><small>기기의 사진 보관함을 엽니다.</small></button>
-            <button type="button" data-vault-action="camera"><span aria-hidden="true">○</span><strong>카메라로 촬영</strong><small>촬영 즉시 암호화해 보관합니다.</small></button>
+            <button type="button" data-vault-action="password"><span aria-hidden="true">✦</span><strong>패스워드</strong><small>로그인 정보를 하나의 암호화 항목으로 보관합니다.</small></button>
+            <button type="button" data-vault-action="journal"><span aria-hidden="true">⌁</span><strong>내면 일기</strong><small>마음속 이야기를 나만 읽을 수 있게 기록합니다.</small></button>
+            <button type="button" data-vault-action="memory"><span aria-hidden="true">◌</span><strong>잠긴 추억</strong><small>공유 메뉴 없이 사진과 영상을 보호합니다.</small></button>
+            <button type="button" data-vault-action="file"><span aria-hidden="true">↑</span><strong>일반 파일</strong><small>문서와 모든 형식의 파일을 선택합니다.</small></button>
           </div>
-          <form class="mobile-text-vault" data-vault-text-form hidden>
-            <label for="vault-text-note">보관할 텍스트</label>
-            <textarea id="vault-text-note" name="note" rows="7" maxlength="20000" placeholder="이 기기에서 암호화할 내용을 입력하세요." required></textarea>
-            <div><button type="button" data-vault-text-cancel>취소</button><button type="submit">암호화해 보관</button></div>
+          <form class="mobile-vault-form" data-vault-password-form hidden>
+            <label>서비스 이름<input name="service" maxlength="80" placeholder="예: 넷플릭스" required></label>
+            <label>아이디<input name="account" maxlength="200" autocomplete="off" placeholder="로그인 아이디"></label>
+            <label>비밀번호<span class="vault-password-field"><input name="password" maxlength="500" autocomplete="new-password" required><button type="button" data-password-generate>안전하게 생성</button></span></label>
+            <label>메모<textarea name="note" rows="3" maxlength="2000" placeholder="복구 정보나 기억할 내용"></textarea></label>
+            <div><button type="button" data-vault-form-cancel>취소</button><button type="submit">암호화해 보관</button></div>
+          </form>
+          <form class="mobile-vault-form" data-vault-journal-form hidden>
+            <label>오늘의 제목<input name="title" maxlength="100" placeholder="지금 마음에 떠오르는 말" required></label>
+            <label>나만의 기록<textarea name="body" rows="9" maxlength="30000" placeholder="판단하지 않고, 있는 그대로 적어보세요." required></textarea></label>
+            <p>일기 제목과 내용도 파일 본문과 함께 암호화되어 저장됩니다.</p>
+            <div><button type="button" data-vault-form-cancel>취소</button><button type="submit">오늘의 기록 잠그기</button></div>
           </form>
           <input type="file" data-mobile-file-input hidden>
           <input type="file" accept="image/*,video/*" data-mobile-media-input hidden>
           <input type="file" accept="image/*" capture="environment" data-mobile-camera-input hidden>
+        </section>
+      </div>
+
+      <div class="mobile-sheet" data-vault-detail hidden>
+        <button class="mobile-sheet__backdrop" type="button" data-sheet-close aria-label="보관 항목 닫기"></button>
+        <section class="mobile-sheet__panel vault-detail" role="dialog" aria-modal="true" aria-labelledby="vault-detail-title">
+          <header>
+            <div><span data-vault-detail-kind>PRIVATE ITEM</span><h2 id="vault-detail-title" data-vault-detail-title>보관 항목</h2></div>
+            <button type="button" data-sheet-close aria-label="닫기">×</button>
+          </header>
+          <div class="vault-detail__body" data-vault-detail-body></div>
+          <div class="vault-detail__actions">
+            <button type="button" data-vault-detail-copy hidden>비밀번호 복사</button>
+            <button type="button" data-vault-detail-download>원본 다운로드</button>
+          </div>
+          <p class="vault-detail__notice" data-vault-detail-notice></p>
         </section>
       </div>
 
@@ -567,6 +608,6 @@
         </section>
       </div>
     </main>
-    <script src="pwa.js?v=260901-1" defer></script>
+    <script src="pwa.js?v=260901-2" defer></script>
   </body>
 </html>

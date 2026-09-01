@@ -1,6 +1,7 @@
 (() => {
   const settings = document.querySelector('[data-mobile-settings]');
   const vaultActions = document.querySelector('[data-vault-actions]');
+  const vaultDetail = document.querySelector('[data-vault-detail]');
   const settingsFeedback = document.querySelector('[data-mobile-settings-feedback]');
   const installButton = document.querySelector('[data-install-app]');
   const installStatus = document.querySelector('[data-install-status]');
@@ -17,11 +18,14 @@
   const closeSheets = () => {
     if (settings) settings.hidden = true;
     if (vaultActions) vaultActions.hidden = true;
+    if (vaultDetail) vaultDetail.hidden = true;
     document.documentElement.classList.remove('has-mobile-sheet');
-    const textForm = document.querySelector('[data-vault-text-form]');
-    textForm?.reset();
-    if (textForm) textForm.hidden = true;
+    document.querySelectorAll('[data-vault-password-form], [data-vault-journal-form]').forEach((form) => {
+      form.reset();
+      form.hidden = true;
+    });
     document.querySelector('.mobile-action-list')?.removeAttribute('hidden');
+    window.dispatchEvent(new CustomEvent('vault:sheetclosed'));
   };
 
   const openSheet = (sheet) => {
