@@ -107,7 +107,7 @@ NCP /var/www/the-vault-previews/mobile-v2/current
 수동 갱신은 서버에서 다음 순서로 수행한다.
 
 ```bash
-sudo -u vault-deploy git -C /srv/the-vault/repository fetch origin codex/mobile-friendly-v2
+sudo -u vault-deploy git -C /srv/the-vault/repository fetch origin codex/mobile-friendly-v2:refs/remotes/origin/codex/mobile-friendly-v2
 sudo -u vault-deploy git -C /srv/the-vault/mobile-friendly-v2 checkout --detach origin/codex/mobile-friendly-v2
 VAULT_WEB_ROOT=/var/www/the-vault-previews/mobile-v2 /srv/the-vault/mobile-friendly-v2/deploy/ncp/publish.sh
 nginx -t
