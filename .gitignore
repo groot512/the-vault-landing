@@ -8,3 +8,8 @@ Desktop.ini
 tmp/
 supabase/
 *.log
+
+# SSH/TLS private material must never enter this public repo
+*.pem
+*.key
+*.ppk
