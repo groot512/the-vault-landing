@@ -1,4 +1,14 @@
 (() => {
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+
+  const syncDisplayMode = () => {
+    document.documentElement.classList.toggle('is-standalone', isStandalone());
+  };
+
+  syncDisplayMode();
+  window.matchMedia('(display-mode: standalone)').addEventListener?.('change', syncDisplayMode);
+
   const settings = document.querySelector('[data-mobile-settings]');
   const vaultActions = document.querySelector('[data-vault-actions]');
   const vaultDetail = document.querySelector('[data-vault-detail]');
@@ -55,9 +65,6 @@
     closeSheets();
     window.location.hash = 'admin';
   });
-
-  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches
-    || window.navigator.standalone === true;
 
   const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
 

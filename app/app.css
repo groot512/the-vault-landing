@@ -2429,7 +2429,8 @@ label:has(input:focus-visible) {
 }
 
 @media (max-width: 42rem) {
-  body {
+  html.is-standalone,
+  html.is-standalone body {
     overscroll-behavior-y: none;
   }
 
