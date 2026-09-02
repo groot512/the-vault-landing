@@ -7,7 +7,7 @@
 ## 2026-09-02 현재 실제 운영 주소
 
 - 브랜드 페이지: `https://thevault73.com/`
-- 앱: `https://app.thevault73.com/app/`
+- Mobile Friendly V2 앱: `https://app.thevault73.com/app/`
 - 비교용 V2 미리보기: `https://thevault73.com/preview/mobile-v2/app/?preview=ux`
 
 도메인 연결을 처음 배운다면 세 요소를 이렇게 기억하면 된다.
@@ -17,6 +17,8 @@
 - **인증서는 서버의 신분증**: 브라우저가 접속한 서버가 해당 도메인의 진짜 운영자인지 확인하고 통신을 암호화한다.
 
 현재 Cafe24 DNS, NCP ACG 443, Let's Encrypt 인증서와 HTTP→HTTPS 전환까지 적용했다. 인증서는 Certbot이 자동 갱신하도록 설정되어 있다.
+
+브랜드 페이지는 안정판 웹 루트를 사용하고, `app` 서브도메인은 분리한 `codex/mobile-friendly-v2` 웹 루트를 사용한다. 같은 서버 안에서도 도메인 이름에 따라 서로 다른 배포 폴더를 보여줄 수 있다는 뜻이다.
 
 ## 1. 가장 먼저 이해할 전체 구조
 

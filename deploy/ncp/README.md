@@ -86,7 +86,7 @@ sudo systemctl start the-vault-deploy.timer
 
 - 브랜드 페이지: `https://thevault73.com/`
 - 보조 주소: `https://www.thevault73.com/`
-- 앱: `https://app.thevault73.com/app/`
+- Mobile Friendly V2 앱: `https://app.thevault73.com/app/`
 
 적용된 연결 구조:
 
@@ -96,6 +96,11 @@ sudo systemctl start the-vault-deploy.timer
 4. Let's Encrypt 인증서가 루트·`www`·`app` 세 호스트를 보호한다.
 5. HTTP 요청은 HTTPS로 이동하고, `app` 서브도메인의 루트는 `/app/`으로 이동한다.
 6. Certbot 자동 갱신 타이머가 활성화되어 있다.
+
+Nginx는 호스트별 웹 루트를 분리한다.
+
+- `thevault73.com`, `www.thevault73.com` → 안정판 `/var/www/the-vault/current`
+- `app.thevault73.com` → `codex/mobile-friendly-v2` 전용 `/var/www/the-vault-previews/mobile-v2/current`
 
 주의: `deploy/ncp/nginx.conf`는 최초 HTTP 연결과 인증서 발급 전 단계의 부트스트랩 템플릿이다. Certbot은 운영 서버의 Nginx 설정에 SSL 블록을 자동 추가한다. 인증서 적용 뒤 이 템플릿으로 `/etc/nginx/sites-available/the-vault`를 덮어쓰면 HTTPS 설정이 사라질 수 있으므로, 운영 설정 변경 전에는 반드시 백업하고 `certbot --nginx`가 관리하는 줄을 보존한다.
 
@@ -116,6 +121,8 @@ NCP /var/www/the-vault-previews/mobile-v2/current
 ```
 
 이 경로는 비교·검증용이다. 운영 자동 배포의 `current` 링크를 바꾸지 않으며 `main` 공개 화면에도 영향을 주지 않는다.
+
+도메인 적용 뒤 `https://app.thevault73.com/app/`은 이 V2 웹 루트를 직접 제공한다. `/preview/mobile-v2/` 경로는 동일 파일을 비교하거나 로그인 없는 UX 데모 모드로 확인할 때 유지한다.
 
 수동 갱신은 서버에서 다음 순서로 수행한다.
 
