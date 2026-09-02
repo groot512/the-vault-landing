@@ -334,6 +334,23 @@
     padding: 0.72rem 0 0.72rem 1rem;
     font-size: 0.66rem;
   }
+
+  .global-nav--app .global-nav__brand,
+  .global-nav--app .global-nav__toggle,
+  .global-nav--app .global-nav__language {
+    font-size: 0.8125rem;
+  }
+
+  .global-nav--app .global-nav__menu {
+    padding-top: 2rem;
+  }
+
+  .global-nav--app .global-nav__link {
+    padding: 0.85rem 0;
+    font-size: clamp(1.35rem, 6.5vw, 2rem);
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

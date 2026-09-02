@@ -262,9 +262,10 @@
     },
   });
 
-  const localPreviewRequested = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)
+  const isLoopback = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+  const localPreviewRequested = isLoopback
     && new URLSearchParams(window.location.search).get('preview') === 'local';
-  const uxPreviewRequested = window.location.pathname.startsWith('/preview/mobile-v2/')
+  const uxPreviewRequested = (window.location.pathname.startsWith('/preview/mobile-v2/') || isLoopback)
     && new URLSearchParams(window.location.search).get('preview') === 'ux';
   const hasRemoteConfig = !localPreviewRequested && !uxPreviewRequested && Boolean(
     config.supabaseUrl
@@ -395,6 +396,7 @@
 
   const revealWorkspace = (identity) => {
     currentIdentity = identity;
+    document.body.classList.add('is-app-authenticated');
     gate.hidden = true;
     lab.hidden = false;
     identityName.textContent = identity.displayName;

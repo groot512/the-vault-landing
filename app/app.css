@@ -2085,7 +2085,8 @@ label:has(input:focus-visible) {
 }
 
 .mobile-action-list > button,
-.mobile-settings__actions > button {
+.mobile-settings__actions > button,
+.mobile-settings__actions > a {
   display: grid;
   grid-template-columns: 2.5rem 1fr auto;
   gap: 0.2rem 0.85rem;
@@ -2097,6 +2098,7 @@ label:has(input:focus-visible) {
   border: 0;
   border-bottom: 1px solid var(--rule-dark);
   cursor: pointer;
+  text-decoration: none;
   text-align: left;
 }
 
@@ -2288,7 +2290,8 @@ label:has(input:focus-visible) {
   color: var(--muted-on-light);
 }
 
-.mobile-settings__actions > button {
+.mobile-settings__actions > button,
+.mobile-settings__actions > a {
   grid-template-columns: 1fr auto;
 }
 
@@ -2429,9 +2432,19 @@ label:has(input:focus-visible) {
 }
 
 @media (max-width: 42rem) {
+  :root {
+    --muted-on-dark: rgb(242 238 227 / 82%);
+    --quiet-on-dark: rgb(242 238 227 / 74%);
+    --muted-on-light: rgb(23 23 20 / 72%);
+  }
+
   html.is-standalone,
   html.is-standalone body {
     overscroll-behavior-y: none;
+  }
+
+  body.is-app-authenticated .global-nav {
+    display: none;
   }
 
   .global-nav {
@@ -3114,6 +3127,89 @@ label:has(input:focus-visible) {
   .audit-event span {
     grid-column: 2;
     text-align: left;
+  }
+
+  /* Product UI uses a readable mobile scale; tiny mono labels are reserved for short system metadata. */
+  .identity-status span,
+  .identity-status strong,
+  .identity-status button,
+  .identity-feedback,
+  .identity-boundary dt,
+  .identity-boundary dd,
+  .identity-form label,
+  .totp-enrollment span {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+
+  .identity-tabs button,
+  .identity-form button,
+  .passkey-signin {
+    font-size: 0.875rem;
+  }
+
+  .identity-form input,
+  .mobile-vault-form input,
+  .mobile-vault-form textarea {
+    font-size: 1rem;
+  }
+
+  .identity-panel__intro span,
+  .identity-boundary dd,
+  .mobile-app-bar small,
+  .tessera-directory__head > span,
+  .tessera-profile small,
+  .tessera-directory__foot p,
+  .contact-item__identity small,
+  .conversation-head small,
+  .vault-mobile-home > header p,
+  .vault-mobile-home > header span,
+  .vault-mobile-summary span,
+  .vault-mobile-summary small,
+  .vault-service-list small,
+  .vault-mobile-recent small,
+  .view-title p,
+  .view-title > span,
+  .file-drop em,
+  .vault-list__empty,
+  .vault-item span,
+  .composer-feedback,
+  .mobile-action-list small,
+  .mobile-settings__actions small,
+  .mobile-vault-form label,
+  .mobile-vault-form > p,
+  .vault-detail__body span,
+  .vault-detail__notice,
+  .mobile-settings__identity dt,
+  .mobile-settings__identity dd,
+  .mobile-settings__note,
+  .mobile-settings__feedback {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .mobile-app-bar strong,
+  .mobile-tabbar strong,
+  .message span,
+  .message .message__state,
+  .composer label,
+  .composer > div > span,
+  .vault-item button,
+  .conversation-head > [data-security-toggle]::after {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .message p,
+  .tessera-conversation .composer textarea,
+  .contact-item__identity strong,
+  .conversation-head strong,
+  .vault-service-list strong,
+  .vault-item strong,
+  .mobile-action-list strong,
+  .mobile-settings__actions strong {
+    font-size: 1rem;
+    line-height: 1.5;
   }
 }
 
