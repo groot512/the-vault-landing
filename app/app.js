@@ -81,6 +81,8 @@
   const renderedMessageIds = new Set();
   let realtimeSubscribedOnce = false;
   let reconnectSyncPromise = null;
+  let fallbackSyncTimer = null;
+  let fallbackSyncPromise = null;
   let activeIdentity = null;
   let issuedCredentials = null;
   let adminAccess = false;
@@ -493,18 +495,18 @@
   };
 
   const renderRemoteMessage = async (message, { acknowledge = true } = {}) => {
-    if (!activeContact) return;
-    if (!messageTargetsActiveDevice(message)) return;
+    if (!activeContact) return false;
+    if (!messageTargetsActiveDevice(message)) return false;
     const actorId = activeIdentity.userId;
     const belongsToActiveConversation = (
       (message.sender_id === actorId && message.recipient_id === activeContact.userId)
       || (message.sender_id === activeContact.userId && message.recipient_id === actorId)
     );
-    if (!belongsToActiveConversation) return;
+    if (!belongsToActiveConversation) return false;
     const displayId = messageDisplayId(message);
     if (renderedMessageIds.has(displayId)) {
       updateMessageReceipt(message);
-      return;
+      return false;
     }
     try {
       const plain = await decryptTesseraMessage(message);
@@ -535,12 +537,49 @@
         }
       }
       if (!mine && acknowledge) await acknowledgeLoadedConversation();
+      return true;
     } catch {
       appendMessage(
         pick('이 기기에서는 메시지를 복호화할 수 없습니다.', 'This device cannot decrypt the message.'),
         { mine: false, createdAt: message.created_at, id: displayId, failed: true },
       );
+      return true;
     }
+  };
+
+  const syncActiveConversation = async ({ summaries = false } = {}) => {
+    if (activeIdentity?.mode !== 'SUPABASE' || !navigator.onLine || document.visibilityState === 'hidden') return;
+    if (fallbackSyncPromise) return fallbackSyncPromise;
+    fallbackSyncPromise = (async () => {
+      let changed = false;
+      const peerUserId = activeContact?.userId;
+      if (peerUserId) {
+        const messages = await window.vaultIdentity.listTesseraMessages(
+          activeIdentity.organization.id,
+          peerUserId,
+          activeIdentity.device.id,
+        );
+        if (activeContact?.userId === peerUserId) {
+          for (const message of messages) {
+            changed = (await renderRemoteMessage(message, { acknowledge: false })) || changed;
+          }
+          if (changed) await acknowledgeLoadedConversation();
+        }
+      }
+      if (summaries || changed) await loadTesseraSummaries();
+    })().catch((error) => {
+      console.warn('Conversation fallback sync failed:', messageErrorText(error));
+    }).finally(() => {
+      fallbackSyncPromise = null;
+    });
+    return fallbackSyncPromise;
+  };
+
+  const startFallbackSync = () => {
+    if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
+    fallbackSyncTimer = window.setInterval(() => {
+      void syncActiveConversation();
+    }, 4000);
   };
 
   const loadConversation = async () => {
@@ -767,14 +806,15 @@
           messageForm?.querySelector('button[type="submit"]')?.toggleAttribute('disabled', !activeContact);
           messageFileTrigger?.toggleAttribute('disabled', !activeContact);
           if (realtimeSubscribedOnce && activeContact && !reconnectSyncPromise) {
-            reconnectSyncPromise = Promise.all([loadConversation(), loadTesseraSummaries()]).finally(() => {
+            reconnectSyncPromise = syncActiveConversation({ summaries: true }).finally(() => {
               reconnectSyncPromise = null;
             });
           }
           realtimeSubscribedOnce = true;
           return;
         }
-        if (messageNetwork) messageNetwork.textContent = status;
+        if (messageNetwork) messageNetwork.textContent = navigator.onLine ? 'ONLINE / SYNC' : 'OFFLINE';
+        if (navigator.onLine) void syncActiveConversation({ summaries: true });
       },
     );
   };
@@ -802,8 +842,13 @@
     }
   };
 
-  document.addEventListener('visibilitychange', acknowledgeVisibleConversation);
-  window.addEventListener('focus', acknowledgeVisibleConversation);
+  const syncVisibleConversation = () => {
+    acknowledgeVisibleConversation();
+    if (document.visibilityState === 'visible') void syncActiveConversation({ summaries: true });
+  };
+
+  document.addEventListener('visibilitychange', syncVisibleConversation);
+  window.addEventListener('focus', syncVisibleConversation);
   window.addEventListener('offline', () => {
     if (messageNetwork) messageNetwork.textContent = 'OFFLINE';
     messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
@@ -817,6 +862,7 @@
     if (activeIdentity?.mode !== 'SUPABASE') return;
     if (messageNetwork) messageNetwork.textContent = 'RECONNECTING';
     startTesseraSubscription();
+    void syncActiveConversation({ summaries: true });
   });
 
   const setSecurityPanel = (open) => {
@@ -1886,6 +1932,7 @@
       if (messageNetwork) messageNetwork.textContent = 'CONNECTING';
       startTesseraSubscription();
       await loadTesseraContacts();
+      startFallbackSync();
       try {
         await loadPersistentVaultFiles();
       } catch (error) {
@@ -1931,6 +1978,7 @@
 
   window.addEventListener('vault:identity-conflict', () => {
     unsubscribeMessages?.();
+    if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
     messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
     messageFileTrigger?.setAttribute('disabled', '');
     if (messageNetwork) messageNetwork.textContent = 'SESSION CONFLICT';
@@ -1941,5 +1989,8 @@
     );
   });
 
-  window.addEventListener('beforeunload', () => unsubscribeMessages?.());
+  window.addEventListener('beforeunload', () => {
+    unsubscribeMessages?.();
+    if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
+  });
 })();
