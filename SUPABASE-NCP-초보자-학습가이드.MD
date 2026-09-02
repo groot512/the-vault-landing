@@ -4,6 +4,20 @@
 > 작성일: 2026-08-28  
 > 범위: GitHub Pages, Supabase, NCP 서버까지 진행한 내용과 다음 단계
 
+## 2026-09-02 현재 실제 운영 주소
+
+- 브랜드 페이지: `https://thevault73.com/`
+- 앱: `https://app.thevault73.com/app/`
+- 비교용 V2 미리보기: `https://thevault73.com/preview/mobile-v2/app/?preview=ux`
+
+도메인 연결을 처음 배운다면 세 요소를 이렇게 기억하면 된다.
+
+- **DNS는 주소록**: `thevault73.com`이라는 이름을 NCP 서버 IP와 연결한다.
+- **443 포트는 HTTPS 출입문**: NCP ACG에서 이 문을 열어야 암호화 접속이 서버까지 도달한다.
+- **인증서는 서버의 신분증**: 브라우저가 접속한 서버가 해당 도메인의 진짜 운영자인지 확인하고 통신을 암호화한다.
+
+현재 Cafe24 DNS, NCP ACG 443, Let's Encrypt 인증서와 HTTP→HTTPS 전환까지 적용했다. 인증서는 Certbot이 자동 갱신하도록 설정되어 있다.
+
 ## 1. 가장 먼저 이해할 전체 구조
 
 현재 THE VAULT는 다음과 같은 구조로 만들어져 있다.
