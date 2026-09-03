@@ -3244,3 +3244,25 @@ label:has(input:focus-visible) {
     margin: 2rem auto;
   }
 }
+/* Notification counts remain readable independently of editorial typography. */
+.tessera-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  background: #a63226;
+  color: #fff;
+  font: 700 13px/1 sans-serif;
+  letter-spacing: 0;
+}
+.tessera-unread-badge[hidden] { display: none; }
+.mobile-tabbar [data-view-target="signal"] { position: relative; }
+.mobile-tabbar .tessera-unread-badge { position: absolute; top: 4px; left: calc(50% + 10px); }
+.push-privacy-note { font-size: 14px; line-height: 1.6; color: #55534b; padding: 8px 0 16px; }
+.mobile-settings__actions [data-push-toggle] > span { display: grid; gap: 6px; }
+.mobile-settings__actions [data-push-toggle] strong { font-size: 16px; color: var(--charcoal); }
+.mobile-settings__actions [data-push-toggle] small { grid-column: 1; font-size: 14px; line-height: 1.6; }
+.mobile-settings__actions [data-push-toggle]:disabled { opacity: 1; cursor: default; }

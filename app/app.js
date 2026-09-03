@@ -578,7 +578,7 @@
   const startFallbackSync = () => {
     if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
     fallbackSyncTimer = window.setInterval(() => {
-      void syncActiveConversation();
+      void syncActiveConversation({ summaries: true });
     }, 4000);
   };
 
@@ -659,6 +659,8 @@
   };
 
   const renderContactDirectory = () => {
+    const unreadCount = [...conversationSummaries.values()].reduce((total, item) => total + item.unreadCount, 0);
+    window.vaultNotifications?.setUnread(unreadCount);
     if (!contactList) return;
     const query = String(contactSearch?.value || '').trim().toLocaleLowerCase();
     const matches = directoryPeople().filter((contact) => (
@@ -1977,6 +1979,9 @@
   }), { once: true });
 
   window.addEventListener('vault:identity-conflict', () => {
+    activeIdentity = null;
+    conversationSummaries.clear();
+    window.vaultNotifications?.setUnread(0);
     unsubscribeMessages?.();
     if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
     messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');

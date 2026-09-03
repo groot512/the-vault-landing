@@ -132,3 +132,11 @@ http://localhost:{port}/app/
 - 메시징: 검증된 E2EE 인프라
 
 GitHub는 코드, 이슈, Pull Request와 배포 자동화의 단일 원본으로 유지한다. 실제 사용자 데이터와 비밀정보는 저장소나 GitHub Pages에 저장하지 않는다.
+# 테세라 알림 (2026-09-03, 운영 활성화 전)
+
+- `notifications.js`: 사용자 선택에 의한 알림 구독/해제, 기기·계정 바인딩, 테세라 탭 숫자와 지원 OS 배지.
+- `service-worker.js`: 일반 문구만 표시, 다른 구독의 오래된 푸시 차단, 알림 클릭 시 테세라 목록 열기.
+- 읽지 않은 숫자는 현재 기기 기준이며 다른 기기에서 읽은 결과까지 일괄 동기화하지는 않음.
+- 실제 푸시는 Supabase DB·Edge Function·전용 비밀키·스케줄러 활성화가 모두 필요. 프론트 파일만 배포해도 푸시가 자동으로 켜지는 것은 아님.
+- 비공개 백엔드 설정 절차는 로컬 `supabase/push-README.md` 참고. 이 폴더는 기존 정책대로 공개 Git에서 제외됨.
+- 프론트 회귀 검사: `node --test tests/notifications.test.mjs tests/notifications-client.test.mjs`

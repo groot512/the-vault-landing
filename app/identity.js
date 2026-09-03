@@ -70,6 +70,26 @@
   };
 
   window.vaultIdentity = Object.freeze({
+    pushConfig: async () => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('get_tessera_push_config');
+      if (error) throw error;
+      return data;
+    },
+    registerPush: async (subscription) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('register_tessera_push', {
+        requested_device_id: currentIdentity.device.id,
+        requested_subscription: subscription,
+      });
+      if (error) throw error;
+      return data;
+    },
+    removePush: async (subscriptionId) => {
+      await verifyCurrentActor();
+      const { error } = await client.rpc('remove_tessera_push', { requested_id: subscriptionId });
+      if (error) throw error;
+    },
     registerPasskey: async () => {
       await verifyCurrentActor();
       if (typeof client?.auth?.registerPasskey !== 'function') {
@@ -855,6 +875,13 @@
 
   signOut?.addEventListener('click', async () => {
     signOut.disabled = true;
+    try {
+      await window.vaultNotifications?.disable();
+    } catch {
+      signOut.disabled = false;
+      window.alert('알림 해제를 확인하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 로그아웃하세요.');
+      return;
+    }
     if (client) await client.auth.signOut();
     else {
       if (currentIdentity?.ownerKey) await deleteDevice(currentIdentity.ownerKey);
