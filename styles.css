@@ -951,7 +951,10 @@ a {
 
 .approach__copy {
   grid-column: 1 / span 5;
+  min-width: 0;
 }
+
+html[lang="en"] .approach__chapter--archive h3 { font-size: clamp(3rem, 5.6vw, 7rem); }
 
 .approach__number {
   margin: 0 0 clamp(1.25rem, 3vh, 2.5rem);
@@ -971,7 +974,7 @@ a {
 
 html[lang="ko"] .approach__copy h3 {
   font-size: clamp(3.4rem, 5.8vw, 8rem);
-  line-height: 1;
+  line-height: 1.18;
   letter-spacing: -0.085em;
   white-space: nowrap;
 }
@@ -1677,13 +1680,19 @@ html[lang="ko"] .approach__copy h3 {
     font-size: clamp(3.25rem, 14vw, 5.5rem);
   }
 
+  html[lang="en"] .approach__chapter--archive h3 { font-size: clamp(2.5rem, 13vw, 5.5rem); }
+
   .approach__description {
-    margin-left: 17%;
+    max-width: none;
+    margin-left: 0;
+    font-size: 1rem;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
   }
 
   .approach__product-link {
-    width: 83%;
-    margin-left: 17%;
+    width: 100%;
+    margin-left: 0;
   }
 
   .approach__layers,
@@ -1709,7 +1718,7 @@ html[lang="ko"] .approach__copy h3 {
   }
 
   .approach__signal-map div {
-    min-height: 9rem;
+    min-height: 7rem;
   }
 
   .approach__signal-map i {

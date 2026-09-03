@@ -898,7 +898,9 @@
   });
 
   if (uxPreviewRequested) {
-    window.setTimeout(initializeUxPreview, 0);
+    // Wait for the app's deferred scripts to subscribe before revealing fixtures.
+    if (document.readyState === 'complete') initializeUxPreview();
+    else document.addEventListener('DOMContentLoaded', initializeUxPreview, { once: true });
     return;
   }
 

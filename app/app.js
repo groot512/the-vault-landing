@@ -404,13 +404,16 @@
     if (id) message.dataset.messageId = id;
     if (system) message.dataset.emptyConversation = '';
     const sender = document.createElement('span');
-    sender.textContent = `${failed ? 'TRUST KERNEL' : senderName} · ${formatMessageTime(createdAt)}`;
+    sender.className = 'message__sender';
+    sender.dataset.noI18n = '';
+    sender.textContent = failed ? 'TRUST KERNEL' : senderName;
     const body = document.createElement('p');
+    body.className = 'message__bubble';
     if (attachment) {
       const attachmentButton = document.createElement('button');
       attachmentButton.type = 'button';
       attachmentButton.className = 'message__attachment';
-      attachmentButton.innerHTML = `<span>${pick('암호화 파일', 'Encrypted file')}</span><strong></strong><small>${pick('디지털 볼트에서 열기', 'Open in Digital Vault')} →</small>`;
+      attachmentButton.innerHTML = `<span>${pick('암호화 파일', 'Encrypted file')}</span><strong></strong><small>${pick('디지털 금고에서 열기', 'Open in Digital Vault')} →</small>`;
       attachmentButton.querySelector('strong').textContent = attachment.name;
       attachmentButton.addEventListener('click', async () => {
         showView('archive');
@@ -423,16 +426,23 @@
       });
       body.appendChild(attachmentButton);
     } else {
+      body.dataset.noI18n = '';
       body.textContent = text;
     }
-    message.append(sender, body);
+    const meta = document.createElement('footer');
+    meta.className = 'message__meta';
+    const time = document.createElement('time');
+    time.dateTime = createdAt;
+    time.textContent = formatMessageTime(createdAt);
+    meta.appendChild(time);
+    message.append(sender, body, meta);
     if (mine && !system && !failed) {
       const state = document.createElement('small');
       state.className = 'message__state';
       state.dataset.messageState = '';
       state.dataset.receipt = readAt ? 'read' : (deliveredAt ? 'delivered' : 'sent');
       state.textContent = receiptLabel({ delivered_at: deliveredAt, read_at: readAt });
-      message.appendChild(state);
+      meta.appendChild(state);
     }
     messageStream?.appendChild(message);
     message.scrollIntoView({ block: 'nearest' });
@@ -1899,6 +1909,16 @@
       fileInput?.removeAttribute('disabled');
       renderSelfProfile();
       showView(window.location.hash.slice(1) || 'archive');
+      if (new URLSearchParams(window.location.search).get('conversation') === '1') {
+        // Visual-only fixtures: no recipient, server request or stored message.
+        tesseraShell?.classList.add('has-conversation');
+        contactName.textContent = '하늘 · 미리보기';
+        contactMeta.textContent = '화면 확인용 대화 · 실제 전송 안 함';
+        messageStream.replaceChildren();
+        appendMessage('안녕하세요! 새 대화창은 어떤가요?', { mine: false, sender: '하늘' });
+        appendMessage('별명과 말풍선이 나뉘어서 훨씬 편하게 읽혀요.\n여러 줄 메시지도 확인해볼게요.', { sender: '나', readAt: new Date().toISOString() });
+        appendMessage('좋아요. 긴 주소도 화면 밖으로 나가지 않아야 해요.\nhttps://example.com/a-very-long-message-link-for-mobile-layout-check', { mine: false, sender: '하늘' });
+      }
       return;
     }
     if (!window.crypto?.subtle) {
@@ -1940,7 +1960,7 @@
       } catch (error) {
         setLocalizedText(
           fileStatus,
-          `디지털 볼트 서버 준비 필요: ${messageErrorText(error)}`,
+          `디지털 금고 서버 준비 필요: ${messageErrorText(error)}`,
           `Digital Vault backend required: ${messageErrorText(error)}`,
         );
       }
