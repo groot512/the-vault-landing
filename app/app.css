@@ -2647,6 +2647,7 @@ label:has(input:focus-visible) {
   }
 
   .mobile-tabbar button {
+    position: relative;
     display: grid;
     gap: 0.1rem;
     place-items: center;
@@ -2670,8 +2671,18 @@ label:has(input:focus-visible) {
   }
 
   .mobile-tabbar__icon {
-    font-size: 1.05rem;
-    line-height: 1;
+    display: block;
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mobile-tabbar button.is-active .mobile-tabbar__icon {
+    color: var(--gold-on-light);
   }
 
   .mobile-tabbar strong {
