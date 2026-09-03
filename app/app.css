@@ -3361,6 +3361,21 @@ label:has(input:focus-visible) {
 .composer__send svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .composer .composer__send:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.message-file { display: grid; gap: 10px; min-width: 170px; max-width: 280px; white-space: normal; }
+.message-file > strong { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.message-file > small { font-size: 12px; opacity: .8; overflow-wrap: anywhere; }
+.message-file__preview { display: block; width: 100%; padding: 0; color: inherit; background: transparent; border: 0; border-radius: 10px; overflow: hidden; cursor: zoom-in; }
+.message-file__preview[hidden] { display: none; }
+.message-file__preview img { display: block; width: 100%; max-height: 320px; object-fit: contain; }
+.message-file .message-file__save { padding: 12px; min-height: 44px; color: inherit; border: 1px solid currentColor; border-radius: 8px; background: transparent; font-size: 14px; letter-spacing: 0; text-align: center; cursor: pointer; }
+.message-file__save:disabled { opacity: .55; cursor: wait; }
+.message .message-file__status { margin: 0; color: inherit; font: inherit; font-size: 13px; line-height: 1.5; letter-spacing: 0; text-transform: none; }
+.message-file__status:empty { display: none; }
+.attachment-viewer { width: min(96vw, 1000px); max-height: 94dvh; padding: 16px; color: #f2eee3; background: #171714; border: 1px solid #777; border-radius: 16px; }
+.attachment-viewer::backdrop { background: rgb(0 0 0 / 85%); }
+.attachment-viewer > button { display: block; margin: 0 0 12px auto; min-width: 64px; min-height: 44px; color: inherit; background: transparent; border: 1px solid #aaa; border-radius: 8px; cursor: pointer; }
+.attachment-viewer > img { display: block; max-width: 100%; max-height: 76dvh; object-fit: contain; margin-inline: auto; }
+
 /* The same vault actions and forms are available on desktop, not a separate store. */
 @media (min-width: 46.01rem) {
   #archive { color: var(--charcoal); background: var(--ivory); }

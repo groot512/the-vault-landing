@@ -73,6 +73,27 @@
   const memberFeedback = document.querySelector('[data-member-feedback]');
   const memberRefresh = document.querySelector('[data-member-refresh]');
   const vaultItems = new Map();
+  let vaultLoadPromise = null;
+  const savingAttachments = new Map();
+  const personalVaultItem = (item) => item.isOwner !== false && item.purpose !== 'tessera-attachment';
+  const savedAttachment = (item, sourceId) => {
+    if (personalVaultItem(item) && item.key && !item.revoked) return sourceId;
+    return [...vaultItems.entries()].find(([, copy]) => personalVaultItem(copy) && copy.key && !copy.revoked && copy.sourceFileId === sourceId)?.[0] || null;
+  };
+  const attachmentUI = window.vaultAttachments.create({
+    load: async (id) => {
+      if (activeIdentity?.mode !== 'SUPABASE') throw new Error('Sign in required');
+      await loadPersistentVaultFiles();
+      const item = vaultItems.get(id);
+      if (!item?.key || item.revoked) throw new Error('Attachment is unavailable');
+      return item;
+    },
+    read: (item) => readVaultItemBytes(item),
+    save: (id) => saveAttachmentToVault(id),
+    savedCopy: savedAttachment,
+    showVault: () => { showView('archive'); window.history.replaceState(null, '', '#archive'); },
+    pick: (ko, en) => pick(ko, en),
+  });
   let messageKey = null;
   let tesseraContacts = [];
   let conversationSummaries = new Map();
@@ -407,24 +428,10 @@
     sender.className = 'message__sender';
     sender.dataset.noI18n = '';
     sender.textContent = failed ? 'TRUST KERNEL' : senderName;
-    const body = document.createElement('p');
+    const body = document.createElement(attachment ? 'div' : 'p');
     body.className = 'message__bubble';
     if (attachment) {
-      const attachmentButton = document.createElement('button');
-      attachmentButton.type = 'button';
-      attachmentButton.className = 'message__attachment';
-      attachmentButton.innerHTML = `<span>${pick('암호화 파일', 'Encrypted file')}</span><strong></strong><small>${pick('디지털 금고에서 열기', 'Open in Digital Vault')} →</small>`;
-      attachmentButton.querySelector('strong').textContent = attachment.name;
-      attachmentButton.addEventListener('click', async () => {
-        showView('archive');
-        window.history.replaceState(null, '', '#archive');
-        try {
-          await loadPersistentVaultFiles();
-        } catch (error) {
-          setLocalizedText(fileStatus, `파일 목록을 불러오지 못했습니다: ${messageErrorText(error)}`, `Could not load files: ${messageErrorText(error)}`);
-        }
-      });
-      body.appendChild(attachmentButton);
+      attachmentUI.render(body, attachment);
     } else {
       body.dataset.noI18n = '';
       body.textContent = text;
@@ -593,6 +600,7 @@
   };
 
   const loadConversation = async () => {
+    attachmentUI.clear();
     renderedMessageIds.clear();
     messageStream?.replaceChildren();
     if (!activeContact) {
@@ -1046,7 +1054,7 @@
 
   const updateVaultItemCount = () => {
     if (!vaultItemCount) return;
-    const active = [...vaultItems.values()].filter((item) => item?.key && !item.revoked).length;
+    const active = [...vaultItems.values()].filter((item) => item?.key && !item.revoked && personalVaultItem(item)).length;
     vaultItemCount.textContent = String(active);
   };
 
@@ -1175,6 +1183,7 @@
   };
 
   const appendVaultItem = (id, file, options = {}) => {
+    if (file.purpose === 'tessera-attachment') return;
     vaultList?.querySelector('.vault-list__empty')?.remove();
     const row = document.createElement('article');
     row.className = 'vault-item';
@@ -1191,7 +1200,7 @@
       state,
       options.revoked
         ? '접근키 폐기 / 접근 불가'
-        : `${options.isOwner === false ? '내게 공유됨' : '안전하게 보관됨'} · ${meta.label} · ${formatSize(file.size)}`,
+        : `${options.isOwner === false ? '대화로 받은 파일 · 개인 보관 전' : '안전하게 보관됨'} · ${meta.label} · ${formatSize(file.size)}`,
       options.revoked
         ? 'Key revoked / inaccessible'
         : `${options.isOwner === false ? 'Received encrypted file' : (options.remote ? 'Stored ciphertext' : 'Encrypted')} / ${formatSize(file.size)}`,
@@ -1281,6 +1290,8 @@
       key,
       iv: base64ToBytes(record.file_iv),
       name: String(metadata.name || pick('암호화 파일', 'Encrypted file')),
+      purpose: metadata.purpose === 'tessera-attachment' ? 'tessera-attachment' : 'private',
+      sourceFileId: typeof metadata.sourceFileId === 'string' ? metadata.sourceFileId : null,
       type: String(metadata.type || 'application/octet-stream'),
       size: Number(metadata.size || Math.max(0, Number(record.ciphertext_bytes || 16) - 16)),
       objectPath: record.object_path,
@@ -1292,22 +1303,35 @@
     };
   };
 
-  const loadPersistentVaultFiles = async () => {
+  const loadPersistentVaultFiles = () => {
+    if (vaultLoadPromise) return vaultLoadPromise;
+    vaultLoadPromise = refreshPersistentVaultFiles().finally(() => { vaultLoadPromise = null; });
+    return vaultLoadPromise;
+  };
+
+  const refreshPersistentVaultFiles = async () => {
     if (activeIdentity?.mode !== 'SUPABASE') return;
+    const identity = activeIdentity;
     setLocalizedText(fileStatus, '서버 암호문 목록 동기화 중', 'Syncing stored ciphertext');
     const records = await window.vaultIdentity.listVaultFiles(
       activeIdentity.organization.id,
       activeIdentity.device.id,
     );
-    vaultItems.clear();
-    updateVaultItemCount();
-    vaultList?.replaceChildren();
+    const items = [];
     for (const record of [...records].reverse()) {
+      if (activeIdentity !== identity) throw new Error('Session changed');
       const item = await unwrapVaultFile(record);
+      items.push(item);
+    }
+    if (activeIdentity !== identity) throw new Error('Session changed');
+    vaultItems.clear();
+    vaultList?.replaceChildren();
+    for (const item of items) {
       vaultItems.set(item.id, item);
       appendVaultItem(item.id, item, { remote: true, revoked: item.revoked, isOwner: item.isOwner });
     }
-    if (!records.length && vaultList) {
+    updateVaultItemCount();
+    if (!items.some(item => item.purpose !== 'tessera-attachment') && vaultList) {
       const empty = document.createElement('p');
       empty.className = 'vault-list__empty';
       empty.textContent = pick('아직 보관된 암호화 파일이 없습니다.', 'No encrypted files are stored yet.');
@@ -1560,7 +1584,9 @@
   memberRefresh?.addEventListener('click', () => loadMembers(true));
   window.addEventListener('vault:languagechange', renderMembers);
 
-  const storeVaultFile = async (file, recipientDevices = []) => {
+  const storeVaultFile = async (file, recipientDevices = [], metadataExtras = {}) => {
+    const identity = activeIdentity;
+    const assertSession = () => { if (activeIdentity !== identity) throw new Error('Session changed'); };
     let uploadedObjectPath = '';
     let registered = false;
     let rawKey = null;
@@ -1580,6 +1606,7 @@
         name: file.name,
         type: file.type,
         size: file.size,
+        ...metadataExtras,
       };
 
       if (activeIdentity?.mode === 'SUPABASE') {
@@ -1587,6 +1614,7 @@
           name: file.name,
           type: file.type || 'application/octet-stream',
           size: file.size,
+          ...metadataExtras,
         }));
         const encryptedMetadata = await encryptBytes(key, metadata);
         rawKey = new Uint8Array(await window.crypto.subtle.exportKey('raw', key));
@@ -1594,10 +1622,12 @@
         const wrappedKey = await encryptBytes(wrappingKey, rawKey);
         uploadedObjectPath = `${activeIdentity.organization.id}/${activeIdentity.userId}/${id}.vault`;
         const ciphertextSha256 = await digestBase64(encrypted.cipher);
+        assertSession();
         await window.vaultIdentity.uploadVaultObject(
           uploadedObjectPath,
           new Blob([encrypted.cipher], { type: 'application/octet-stream' }),
         );
+        assertSession();
         await window.vaultIdentity.registerVaultFile({
           requested_file_id: id,
           requested_organization_id: activeIdentity.organization.id,
@@ -1660,6 +1690,34 @@
     } finally {
       rawKey?.fill(0);
     }
+  };
+
+  const saveAttachmentToVault = (sourceId) => {
+    if (savingAttachments.has(sourceId)) return savingAttachments.get(sourceId);
+    const operation = (async () => {
+      const identity = activeIdentity;
+      if (identity?.mode !== 'SUPABASE') throw new Error('Sign in required');
+      await loadPersistentVaultFiles();
+      if (activeIdentity !== identity) throw new Error('Session changed');
+      const source = vaultItems.get(sourceId);
+      if (!source?.key || source.revoked) throw new Error('Attachment is unavailable');
+      const existing = savedAttachment(source, sourceId);
+      if (existing) return existing;
+      const bytes = await readVaultItemBytes(source);
+      if (bytes.byteLength > 10 * 1024 * 1024) throw new Error('File exceeds 10 MB');
+      if (activeIdentity !== identity) throw new Error('Session changed');
+      // A new ID, content key and owner envelope; never inherit recipient shares.
+      const file = new File([bytes], source.name, { type: source.type });
+      const { id, item } = await storeVaultFile(file, [], { purpose: 'private', sourceFileId: sourceId });
+      if (activeIdentity !== identity) throw new Error('Session changed');
+      vaultItems.set(id, item);
+      appendVaultItem(id, item, { remote: true, isOwner: true });
+      addAudit('FILE_SAVED_FROM_CHAT', 'DIGITAL VAULT');
+      return id;
+    })();
+    savingAttachments.set(sourceId, operation);
+    operation.finally(() => savingAttachments.delete(sourceId)).catch(() => {});
+    return operation;
   };
 
   const handleVaultFile = async (file) => {
@@ -1862,9 +1920,9 @@
       if (activeIdentity?.mode !== 'SUPABASE') throw new Error('파일 공유는 서버 인증 모드에서 사용할 수 있습니다.');
       const recipientDevices = activeRecipientDevices();
       if (!recipientDevices.length) throw new Error('상대방의 활성 기기가 없습니다.');
-      const { id, item, encrypted } = await storeVaultFile(file, recipientDevices);
+      const { id, item, encrypted } = await storeVaultFile(file, recipientDevices, { purpose: 'tessera-attachment' });
       vaultItems.set(id, item);
-      appendVaultItem(id, file, { remote: true, isOwner: true });
+      appendVaultItem(id, item, { remote: true, isOwner: true });
       renderPayload(fileOutput, encrypted.payload);
       const reference = encoder.encode(JSON.stringify({
         v: 1,
@@ -1999,6 +2057,7 @@
   }), { once: true });
 
   window.addEventListener('vault:identity-conflict', () => {
+    attachmentUI.clear();
     activeIdentity = null;
     conversationSummaries.clear();
     window.vaultNotifications?.setUnread(0);
@@ -2015,7 +2074,13 @@
   });
 
   window.addEventListener('beforeunload', () => {
+    attachmentUI.clear();
     unsubscribeMessages?.();
     if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
   });
+  window.addEventListener('pagehide', () => attachmentUI.clear());
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted && activeIdentity?.mode === 'SUPABASE') void loadConversation();
+  });
+  document.querySelector('[data-sign-out]')?.addEventListener('click', () => attachmentUI.clear());
 })();

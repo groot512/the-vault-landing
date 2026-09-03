@@ -1,4 +1,4 @@
-const CACHE_NAME = 'the-vault-app-v10';
+const CACHE_NAME = 'the-vault-app-v11';
 const PUSH_CACHE = 'the-vault-push-state-v1';
 const PUSH_BINDING = new URL('./__push_binding__', self.registration.scope).href;
 const APP_SHELL = [
@@ -6,6 +6,7 @@ const APP_SHELL = [
   './index.html',
   './app.css',
   './app.js',
+  './attachments.js',
   './config.js',
   './identity.js',
   './recovery.js',
