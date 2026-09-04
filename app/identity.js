@@ -70,6 +70,26 @@
   };
 
   window.vaultIdentity = Object.freeze({
+    pushConfig: async () => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('get_tessera_push_config');
+      if (error) throw error;
+      return data;
+    },
+    registerPush: async (subscription) => {
+      await verifyCurrentActor();
+      const { data, error } = await client.rpc('register_tessera_push', {
+        requested_device_id: currentIdentity.device.id,
+        requested_subscription: subscription,
+      });
+      if (error) throw error;
+      return data;
+    },
+    removePush: async (subscriptionId) => {
+      await verifyCurrentActor();
+      const { error } = await client.rpc('remove_tessera_push', { requested_id: subscriptionId });
+      if (error) throw error;
+    },
     registerPasskey: async () => {
       await verifyCurrentActor();
       if (typeof client?.auth?.registerPasskey !== 'function') {
@@ -262,9 +282,12 @@
     },
   });
 
-  const localPreviewRequested = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)
+  const isLoopback = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+  const localPreviewRequested = isLoopback
     && new URLSearchParams(window.location.search).get('preview') === 'local';
-  const hasRemoteConfig = !localPreviewRequested && Boolean(
+  const uxPreviewRequested = (window.location.pathname.startsWith('/preview/mobile-v2/') || isLoopback)
+    && new URLSearchParams(window.location.search).get('preview') === 'ux';
+  const hasRemoteConfig = !localPreviewRequested && !uxPreviewRequested && Boolean(
     config.supabaseUrl
       && config.supabasePublishableKey
       && /^https:\/\/.+\.supabase\.co$/.test(config.supabaseUrl),
@@ -393,6 +416,7 @@
 
   const revealWorkspace = (identity) => {
     currentIdentity = identity;
+    document.body.classList.add('is-app-authenticated');
     gate.hidden = true;
     lab.hidden = false;
     identityName.textContent = identity.displayName;
@@ -629,6 +653,21 @@
     else await showRecoveryPanel(identity);
   };
 
+  const initializeUxPreview = () => {
+    modeLabel.textContent = 'UX PREVIEW / NO SERVER';
+    authBoundary.textContent = 'Visual demo only';
+    revealWorkspace({
+      userId: 'ux-preview',
+      vaultId: 'preview-vault',
+      displayName: '나의 금고',
+      nickname: '미리보기',
+      role: 'MEMBER',
+      mode: 'UX PREVIEW',
+      organization: { id: 'ux-preview', name: 'PRIVATE SPACE' },
+      device: { id: 'preview-device', fingerprint: 'VISUAL:DEMO', publicKeyJwk: null },
+    });
+  };
+
   authModeButtons.forEach((button) => {
     button.addEventListener('click', () => {
       authMode = button.dataset.authMode;
@@ -836,6 +875,13 @@
 
   signOut?.addEventListener('click', async () => {
     signOut.disabled = true;
+    try {
+      await window.vaultNotifications?.disable();
+    } catch {
+      signOut.disabled = false;
+      window.alert('알림 해제를 확인하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 로그아웃하세요.');
+      return;
+    }
     if (client) await client.auth.signOut();
     else {
       if (currentIdentity?.ownerKey) await deleteDevice(currentIdentity.ownerKey);
@@ -850,6 +896,13 @@
     if (client) await client.auth.signOut();
     window.location.reload();
   });
+
+  if (uxPreviewRequested) {
+    // Wait for the app's deferred scripts to subscribe before revealing fixtures.
+    if (document.readyState === 'complete') initializeUxPreview();
+    else document.addEventListener('DOMContentLoaded', initializeUxPreview, { once: true });
+    return;
+  }
 
   if (!window.crypto?.subtle || !window.indexedDB) {
     setFeedback('이 브라우저는 기기 키 저장에 필요한 Web Crypto 또는 IndexedDB를 지원하지 않습니다.', true);

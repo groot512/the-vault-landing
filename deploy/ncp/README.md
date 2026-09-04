@@ -82,8 +82,54 @@ sudo systemctl start the-vault-deploy.timer
 
 ## 도메인 적용 단계
 
-1. 공식 도메인의 A 레코드를 NCP 공인 IP에 연결한다.
-2. NCP ACG에서 TCP 80과 443을 허용한다.
-3. HTTPS 인증서를 적용한다.
-4. Supabase Edge Function의 허용 Origin에 공식 도메인을 추가한다.
-5. 공식 도메인에서 로그인, TOTP, 관리자 계정 발급과 구성원 관리를 다시 검증한다.
+현재 공식 주소는 다음과 같다.
+
+- 브랜드 페이지: `https://thevault73.com/`
+- 보조 주소: `https://www.thevault73.com/`
+- Mobile Friendly V2 앱: `https://app.thevault73.com/app/`
+
+적용된 연결 구조:
+
+1. Cafe24 DNS의 루트 A 레코드가 NCP 공인 IP를 가리킨다.
+2. 기존 `*.thevault73.com` 와일드카드 CNAME이 `www`와 `app`을 루트 도메인으로 연결한다.
+3. NCP ACG는 TCP 80(HTTP), 443(HTTPS), 22(SSH)를 허용한다.
+4. Let's Encrypt 인증서가 루트·`www`·`app` 세 호스트를 보호한다.
+5. HTTP 요청은 HTTPS로 이동하고, `app` 서브도메인의 루트는 `/app/`으로 이동한다.
+6. Certbot 자동 갱신 타이머가 활성화되어 있다.
+
+Nginx는 호스트별 웹 루트를 분리한다.
+
+- `thevault73.com`, `www.thevault73.com` → 안정판 `/var/www/the-vault/current`
+- `app.thevault73.com` → `codex/mobile-friendly-v2` 전용 `/var/www/the-vault-previews/mobile-v2/current`
+
+주의: `deploy/ncp/nginx.conf`는 최초 HTTP 연결과 인증서 발급 전 단계의 부트스트랩 템플릿이다. Certbot은 운영 서버의 Nginx 설정에 SSL 블록을 자동 추가한다. 인증서 적용 뒤 이 템플릿으로 `/etc/nginx/sites-available/the-vault`를 덮어쓰면 HTTPS 설정이 사라질 수 있으므로, 운영 설정 변경 전에는 반드시 백업하고 `certbot --nginx`가 관리하는 줄을 보존한다.
+
+Supabase Edge Function은 위 세 HTTPS Origin을 허용하도록 소스에 반영한다. 함수 배포 후 공식 앱에서 로그인, TOTP, 관리자 계정 발급과 구성원 관리를 다시 검증한다.
+
+## Mobile Friendly V2 미리보기
+
+V2는 운영 `main`과 다른 Git worktree와 웹 루트를 사용한다.
+
+```text
+GitHub codex/mobile-friendly-v2
+        ↓
+NCP /srv/the-vault/mobile-friendly-v2
+        ↓ publish.sh
+NCP /var/www/the-vault-previews/mobile-v2/current
+        ↓
+/preview/mobile-v2/
+```
+
+이 경로는 비교·검증용이다. 운영 자동 배포의 `current` 링크를 바꾸지 않으며 `main` 공개 화면에도 영향을 주지 않는다.
+
+도메인 적용 뒤 `https://app.thevault73.com/app/`은 이 V2 웹 루트를 직접 제공한다. `/preview/mobile-v2/` 경로는 동일 파일을 비교하거나 로그인 없는 UX 데모 모드로 확인할 때 유지한다.
+
+수동 갱신은 서버에서 다음 순서로 수행한다.
+
+```bash
+sudo -u vault-deploy git -C /srv/the-vault/repository fetch origin codex/mobile-friendly-v2:refs/remotes/origin/codex/mobile-friendly-v2
+sudo -u vault-deploy git -C /srv/the-vault/mobile-friendly-v2 checkout --detach origin/codex/mobile-friendly-v2
+VAULT_WEB_ROOT=/var/www/the-vault-previews/mobile-v2 /srv/the-vault/mobile-friendly-v2/deploy/ncp/publish.sh
+nginx -t
+systemctl reload nginx
+```

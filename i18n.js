@@ -4,15 +4,15 @@
   const pairs = [
     ['더 볼트', 'THE VAULT'],
     ['테세라', 'TESSERA'],
-    ['디지털 볼트', 'DIGITAL VAULT'],
+    ['디지털 금고', 'DIGITAL VAULT'],
     ['트러스트 랩', 'TRUST LAB'],
     ['더 볼트 룸', 'THE VAULT ROOM'],
     ['더 볼트 전체 메뉴', 'THE VAULT global navigation'],
     ['테세라 세부 메뉴', 'TESSERA submenu'],
-    ['디지털 볼트 세부 메뉴', 'DIGITAL VAULT submenu'],
+    ['디지털 금고 세부 메뉴', 'DIGITAL VAULT submenu'],
     ['트러스트 랩 세부 메뉴', 'TRUST LAB submenu'],
     ['테세라 ↗', 'TESSERA ↗'],
-    ['디지털 볼트 ↗', 'DIGITAL VAULT ↗'],
+    ['디지털 금고 ↗', 'DIGITAL VAULT ↗'],
     ['트러스트 랩 ↗', 'TRUST LAB ↗'],
     ['철학', 'Philosophy'],
     ['비전', 'Vision'],
@@ -83,7 +83,7 @@
     ['검토', 'Review'],
     ['트러스트 랩 열기', 'Open Trust Lab'],
     ['테세라로 돌아가기', 'Return to TESSERA'],
-    ['디지털 볼트 보기', 'View DIGITAL VAULT'],
+    ['디지털 금고 보기', 'View DIGITAL VAULT'],
     ['로컬 미리보기', 'Local Preview'],
     ['서버 없이 기기 등록 흐름을 먼저 확인합니다.', 'Preview the device enrollment flow without a server.'],
     ['실명을 요구하지 않습니다. VAULT ID와 조직명은 이 브라우저에만 저장됩니다.', 'No legal name is required. Your VAULT ID and organization stay in this browser.'],
@@ -183,7 +183,7 @@
     ['종단간 암호화 · 평문 미저장', 'End-to-end encrypted · no plaintext storage'],
     ['파일 첨부', 'Attach file'],
     ['암호화 파일', 'Encrypted file'],
-    ['디지털 볼트에서 열기', 'Open in Digital Vault'],
+    ['디지털 금고에서 열기', 'Open in Digital Vault'],
     ['보내기', 'Send'],
     ['메시지 내용은 이 기기에서 암호화됩니다.', 'Messages are encrypted on this device.'],
     ['전송 후 서버에 저장되는 암호문의 일부가 표시됩니다.', 'A portion of the server-stored ciphertext appears after sending.'],
@@ -218,10 +218,10 @@
   const koToEn = new Map(pairs.map(([ko, en]) => [normalize(ko), en]));
   const enToKo = new Map(pairs.map(([ko, en]) => [normalize(en), ko]));
   enToKo.set('Tessera', '테세라');
-  enToKo.set('Digital Vault', '디지털 볼트');
+  enToKo.set('Digital Vault', '디지털 금고');
   enToKo.set('Trust Lab', '트러스트 랩');
   enToKo.set('Tessera ↗', '테세라 ↗');
-  enToKo.set('Digital Vault ↗', '디지털 볼트 ↗');
+  enToKo.set('Digital Vault ↗', '디지털 금고 ↗');
   enToKo.set('Trust Lab ↗', '트러스트 랩 ↗');
   let language = localStorage.getItem(STORAGE_KEY) === 'en' ? 'en' : DEFAULT_LANGUAGE;
   let translationQueued = false;
@@ -230,8 +230,8 @@
     const replacements = targetLanguage === 'ko'
       ? [
           ['THE VAULT ROOM', '더 볼트 룸'],
-          ['DIGITAL VAULT', '디지털 볼트'],
-          ['Digital Vault', '디지털 볼트'],
+          ['DIGITAL VAULT', '디지털 금고'],
+          ['Digital Vault', '디지털 금고'],
           ['TRUST LAB', '트러스트 랩'],
           ['Trust Lab', '트러스트 랩'],
           ['TESSERA', '테세라'],
@@ -240,7 +240,7 @@
         ]
       : [
           ['더 볼트 룸', 'THE VAULT ROOM'],
-          ['디지털 볼트', 'DIGITAL VAULT'],
+          ['디지털 금고', 'DIGITAL VAULT'],
           ['트러스트 랩', 'TRUST LAB'],
           ['테세라', 'TESSERA'],
           ['더 볼트', 'THE VAULT'],

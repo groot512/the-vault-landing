@@ -45,8 +45,17 @@
   const mobileAdmin = document.querySelector('[data-mobile-admin]');
   const vaultActions = document.querySelector('[data-vault-actions]');
   const vaultActionsOpen = document.querySelector('[data-vault-actions-open]');
-  const vaultTextForm = document.querySelector('[data-vault-text-form]');
-  const vaultTextCancel = document.querySelector('[data-vault-text-cancel]');
+  const vaultPasswordForm = document.querySelector('[data-vault-password-form]');
+  const vaultJournalForm = document.querySelector('[data-vault-journal-form]');
+  const passwordGenerate = document.querySelector('[data-password-generate]');
+  const vaultItemCount = document.querySelector('[data-vault-item-count]');
+  const vaultDetail = document.querySelector('[data-vault-detail]');
+  const vaultDetailKind = document.querySelector('[data-vault-detail-kind]');
+  const vaultDetailTitle = document.querySelector('[data-vault-detail-title]');
+  const vaultDetailBody = document.querySelector('[data-vault-detail-body]');
+  const vaultDetailCopy = document.querySelector('[data-vault-detail-copy]');
+  const vaultDetailDownload = document.querySelector('[data-vault-detail-download]');
+  const vaultDetailNotice = document.querySelector('[data-vault-detail-notice]');
   const mobileFileInput = document.querySelector('[data-mobile-file-input]');
   const mobileMediaInput = document.querySelector('[data-mobile-media-input]');
   const mobileCameraInput = document.querySelector('[data-mobile-camera-input]');
@@ -64,6 +73,27 @@
   const memberFeedback = document.querySelector('[data-member-feedback]');
   const memberRefresh = document.querySelector('[data-member-refresh]');
   const vaultItems = new Map();
+  let vaultLoadPromise = null;
+  const savingAttachments = new Map();
+  const personalVaultItem = (item) => item.isOwner !== false && item.purpose !== 'tessera-attachment';
+  const savedAttachment = (item, sourceId) => {
+    if (personalVaultItem(item) && item.key && !item.revoked) return sourceId;
+    return [...vaultItems.entries()].find(([, copy]) => personalVaultItem(copy) && copy.key && !copy.revoked && copy.sourceFileId === sourceId)?.[0] || null;
+  };
+  const attachmentUI = window.vaultAttachments.create({
+    load: async (id) => {
+      if (activeIdentity?.mode !== 'SUPABASE') throw new Error('Sign in required');
+      await loadPersistentVaultFiles();
+      const item = vaultItems.get(id);
+      if (!item?.key || item.revoked) throw new Error('Attachment is unavailable');
+      return item;
+    },
+    read: (item) => readVaultItemBytes(item),
+    save: (id) => saveAttachmentToVault(id),
+    savedCopy: savedAttachment,
+    showVault: () => { showView('archive'); window.history.replaceState(null, '', '#archive'); },
+    pick: (ko, en) => pick(ko, en),
+  });
   let messageKey = null;
   let tesseraContacts = [];
   let conversationSummaries = new Map();
@@ -72,12 +102,18 @@
   const renderedMessageIds = new Set();
   let realtimeSubscribedOnce = false;
   let reconnectSyncPromise = null;
+  let fallbackSyncTimer = null;
+  let fallbackSyncPromise = null;
   let activeIdentity = null;
   let issuedCredentials = null;
   let adminAccess = false;
   let memberLoading = false;
   let memberRecords = [];
   let auditCounter = 0;
+  let pendingVaultKind = 'file';
+  let activeVaultDetailId = null;
+  let activeVaultDetailSecret = '';
+  let vaultDetailObjectUrl = '';
 
   const pick = (ko, en) => window.vaultI18n?.pick(ko, en) ?? ko;
 
@@ -96,8 +132,8 @@
   };
   const mobileViewNames = {
     signal: '테세라',
-    archive: '디지털 볼트',
-    audit: '보안 기록',
+    archive: '디지털 금고',
+    audit: '활동 기록',
     admin: '계정 관리',
   };
 
@@ -389,35 +425,31 @@
     if (id) message.dataset.messageId = id;
     if (system) message.dataset.emptyConversation = '';
     const sender = document.createElement('span');
-    sender.textContent = `${failed ? 'TRUST KERNEL' : senderName} · ${formatMessageTime(createdAt)}`;
-    const body = document.createElement('p');
+    sender.className = 'message__sender';
+    sender.dataset.noI18n = '';
+    sender.textContent = failed ? 'TRUST KERNEL' : senderName;
+    const body = document.createElement(attachment ? 'div' : 'p');
+    body.className = 'message__bubble';
     if (attachment) {
-      const attachmentButton = document.createElement('button');
-      attachmentButton.type = 'button';
-      attachmentButton.className = 'message__attachment';
-      attachmentButton.innerHTML = `<span>${pick('암호화 파일', 'Encrypted file')}</span><strong></strong><small>${pick('디지털 볼트에서 열기', 'Open in Digital Vault')} →</small>`;
-      attachmentButton.querySelector('strong').textContent = attachment.name;
-      attachmentButton.addEventListener('click', async () => {
-        showView('archive');
-        window.history.replaceState(null, '', '#archive');
-        try {
-          await loadPersistentVaultFiles();
-        } catch (error) {
-          setLocalizedText(fileStatus, `파일 목록을 불러오지 못했습니다: ${messageErrorText(error)}`, `Could not load files: ${messageErrorText(error)}`);
-        }
-      });
-      body.appendChild(attachmentButton);
+      attachmentUI.render(body, attachment);
     } else {
+      body.dataset.noI18n = '';
       body.textContent = text;
     }
-    message.append(sender, body);
+    const meta = document.createElement('footer');
+    meta.className = 'message__meta';
+    const time = document.createElement('time');
+    time.dateTime = createdAt;
+    time.textContent = formatMessageTime(createdAt);
+    meta.appendChild(time);
+    message.append(sender, body, meta);
     if (mine && !system && !failed) {
       const state = document.createElement('small');
       state.className = 'message__state';
       state.dataset.messageState = '';
       state.dataset.receipt = readAt ? 'read' : (deliveredAt ? 'delivered' : 'sent');
       state.textContent = receiptLabel({ delivered_at: deliveredAt, read_at: readAt });
-      message.appendChild(state);
+      meta.appendChild(state);
     }
     messageStream?.appendChild(message);
     message.scrollIntoView({ block: 'nearest' });
@@ -480,18 +512,18 @@
   };
 
   const renderRemoteMessage = async (message, { acknowledge = true } = {}) => {
-    if (!activeContact) return;
-    if (!messageTargetsActiveDevice(message)) return;
+    if (!activeContact) return false;
+    if (!messageTargetsActiveDevice(message)) return false;
     const actorId = activeIdentity.userId;
     const belongsToActiveConversation = (
       (message.sender_id === actorId && message.recipient_id === activeContact.userId)
       || (message.sender_id === activeContact.userId && message.recipient_id === actorId)
     );
-    if (!belongsToActiveConversation) return;
+    if (!belongsToActiveConversation) return false;
     const displayId = messageDisplayId(message);
     if (renderedMessageIds.has(displayId)) {
       updateMessageReceipt(message);
-      return;
+      return false;
     }
     try {
       const plain = await decryptTesseraMessage(message);
@@ -522,15 +554,53 @@
         }
       }
       if (!mine && acknowledge) await acknowledgeLoadedConversation();
+      return true;
     } catch {
       appendMessage(
         pick('이 기기에서는 메시지를 복호화할 수 없습니다.', 'This device cannot decrypt the message.'),
         { mine: false, createdAt: message.created_at, id: displayId, failed: true },
       );
+      return true;
     }
   };
 
+  const syncActiveConversation = async ({ summaries = false } = {}) => {
+    if (activeIdentity?.mode !== 'SUPABASE' || !navigator.onLine || document.visibilityState === 'hidden') return;
+    if (fallbackSyncPromise) return fallbackSyncPromise;
+    fallbackSyncPromise = (async () => {
+      let changed = false;
+      const peerUserId = activeContact?.userId;
+      if (peerUserId) {
+        const messages = await window.vaultIdentity.listTesseraMessages(
+          activeIdentity.organization.id,
+          peerUserId,
+          activeIdentity.device.id,
+        );
+        if (activeContact?.userId === peerUserId) {
+          for (const message of messages) {
+            changed = (await renderRemoteMessage(message, { acknowledge: false })) || changed;
+          }
+          if (changed) await acknowledgeLoadedConversation();
+        }
+      }
+      if (summaries || changed) await loadTesseraSummaries();
+    })().catch((error) => {
+      console.warn('Conversation fallback sync failed:', messageErrorText(error));
+    }).finally(() => {
+      fallbackSyncPromise = null;
+    });
+    return fallbackSyncPromise;
+  };
+
+  const startFallbackSync = () => {
+    if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
+    fallbackSyncTimer = window.setInterval(() => {
+      void syncActiveConversation({ summaries: true });
+    }, 4000);
+  };
+
   const loadConversation = async () => {
+    attachmentUI.clear();
     renderedMessageIds.clear();
     messageStream?.replaceChildren();
     if (!activeContact) {
@@ -607,6 +677,8 @@
   };
 
   const renderContactDirectory = () => {
+    const unreadCount = [...conversationSummaries.values()].reduce((total, item) => total + item.unreadCount, 0);
+    window.vaultNotifications?.setUnread(unreadCount);
     if (!contactList) return;
     const query = String(contactSearch?.value || '').trim().toLocaleLowerCase();
     const matches = directoryPeople().filter((contact) => (
@@ -754,14 +826,15 @@
           messageForm?.querySelector('button[type="submit"]')?.toggleAttribute('disabled', !activeContact);
           messageFileTrigger?.toggleAttribute('disabled', !activeContact);
           if (realtimeSubscribedOnce && activeContact && !reconnectSyncPromise) {
-            reconnectSyncPromise = Promise.all([loadConversation(), loadTesseraSummaries()]).finally(() => {
+            reconnectSyncPromise = syncActiveConversation({ summaries: true }).finally(() => {
               reconnectSyncPromise = null;
             });
           }
           realtimeSubscribedOnce = true;
           return;
         }
-        if (messageNetwork) messageNetwork.textContent = status;
+        if (messageNetwork) messageNetwork.textContent = navigator.onLine ? 'ONLINE / SYNC' : 'OFFLINE';
+        if (navigator.onLine) void syncActiveConversation({ summaries: true });
       },
     );
   };
@@ -789,8 +862,13 @@
     }
   };
 
-  document.addEventListener('visibilitychange', acknowledgeVisibleConversation);
-  window.addEventListener('focus', acknowledgeVisibleConversation);
+  const syncVisibleConversation = () => {
+    acknowledgeVisibleConversation();
+    if (document.visibilityState === 'visible') void syncActiveConversation({ summaries: true });
+  };
+
+  document.addEventListener('visibilitychange', syncVisibleConversation);
+  window.addEventListener('focus', syncVisibleConversation);
   window.addEventListener('offline', () => {
     if (messageNetwork) messageNetwork.textContent = 'OFFLINE';
     messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
@@ -804,6 +882,7 @@
     if (activeIdentity?.mode !== 'SUPABASE') return;
     if (messageNetwork) messageNetwork.textContent = 'RECONNECTING';
     startTesseraSubscription();
+    void syncActiveConversation({ summaries: true });
   });
 
   const setSecurityPanel = (open) => {
@@ -954,12 +1033,36 @@
     return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
   };
 
-  const downloadVaultItem = async (id) => {
-    const item = vaultItems.get(id);
-    if (!item?.key) return;
+  const vaultKinds = {
+    password: { prefix: '__vault_password__', label: '패스워드', icon: '✦' },
+    journal: { prefix: '__vault_journal__', label: '내면 일기', icon: '⌁' },
+    memory: { prefix: '__vault_memory__', label: '잠긴 추억', icon: '◌' },
+    file: { prefix: '', label: '파일', icon: '↑' },
+  };
+
+  const vaultItemMeta = (name = '') => {
+    const entry = Object.entries(vaultKinds).find(([, value]) => value.prefix && name.startsWith(value.prefix));
+    const kind = entry?.[0] || 'file';
+    const definition = vaultKinds[kind];
+    return {
+      kind,
+      label: definition.label,
+      icon: definition.icon,
+      displayName: definition.prefix ? name.slice(definition.prefix.length) : name,
+    };
+  };
+
+  const updateVaultItemCount = () => {
+    if (!vaultItemCount) return;
+    const active = [...vaultItems.values()].filter((item) => item?.key && !item.revoked && personalVaultItem(item)).length;
+    vaultItemCount.textContent = String(active);
+  };
+
+  const readVaultItemBytes = async (item) => {
+    if (!item?.key) throw new Error('이 항목의 접근키가 없습니다.');
     let cipher = item.cipher;
     if (item.remote) {
-      setLocalizedText(fileStatus, '암호문 다운로드 중', 'Downloading ciphertext');
+      setLocalizedText(fileStatus, '암호문을 안전하게 여는 중', 'Opening ciphertext securely');
       const stored = await window.vaultIdentity.downloadVaultObject(item.objectPath);
       cipher = new Uint8Array(await stored.arrayBuffer());
       const actualDigest = await digestBase64(cipher);
@@ -967,7 +1070,13 @@
         throw new Error('암호문 무결성 검증에 실패했습니다.');
       }
     }
-    const decrypted = await decryptBytes(item.key, item.iv, cipher);
+    return decryptBytes(item.key, item.iv, cipher);
+  };
+
+  const downloadVaultItem = async (id) => {
+    const item = vaultItems.get(id);
+    if (!item?.key) return;
+    const decrypted = await readVaultItemBytes(item);
     const blob = new Blob([decrypted], { type: item.type || 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -979,9 +1088,85 @@
     addAudit('FILE_DECRYPTED', 'DIGITAL VAULT');
   };
 
+  const addDetailField = (label, value, options = {}) => {
+    const row = document.createElement('div');
+    const term = document.createElement('span');
+    term.textContent = label;
+    const content = document.createElement(options.multiline ? 'p' : 'strong');
+    content.textContent = options.secret && value ? '••••••••••••' : (value || '—');
+    if (options.secret) {
+      content.className = 'is-secret';
+      const reveal = document.createElement('button');
+      reveal.type = 'button';
+      reveal.textContent = '보기';
+      reveal.addEventListener('click', () => {
+        const hidden = content.textContent !== value;
+        content.textContent = hidden ? value : '••••••••••••';
+        reveal.textContent = hidden ? '숨기기' : '보기';
+      });
+      row.append(term, content, reveal);
+    } else {
+      row.append(term, content);
+    }
+    vaultDetailBody?.append(row);
+  };
+
+  const openVaultItem = async (id) => {
+    const item = vaultItems.get(id);
+    if (!item?.key) return;
+    const meta = vaultItemMeta(item.name);
+    if (meta.kind === 'file') {
+      await downloadVaultItem(id);
+      return;
+    }
+    const decrypted = await readVaultItemBytes(item);
+    activeVaultDetailId = id;
+    activeVaultDetailSecret = '';
+    if (vaultDetailObjectUrl) URL.revokeObjectURL(vaultDetailObjectUrl);
+    vaultDetailObjectUrl = '';
+    vaultDetailBody?.replaceChildren();
+    if (vaultDetailKind) vaultDetailKind.textContent = meta.label;
+    if (vaultDetailTitle) vaultDetailTitle.textContent = meta.displayName;
+    if (vaultDetailCopy) vaultDetailCopy.hidden = true;
+    if (vaultDetailDownload) vaultDetailDownload.hidden = false;
+    if (vaultDetailNotice) vaultDetailNotice.textContent = '복호화된 내용은 이 화면을 닫으면 지워집니다.';
+
+    if (meta.kind === 'password') {
+      const record = JSON.parse(decoder.decode(decrypted));
+      if (vaultDetailTitle) vaultDetailTitle.textContent = record.service || meta.displayName;
+      addDetailField('아이디', record.account);
+      addDetailField('비밀번호', record.password, { secret: true });
+      if (record.note) addDetailField('메모', record.note, { multiline: true });
+      activeVaultDetailSecret = record.password || '';
+      if (vaultDetailCopy) vaultDetailCopy.hidden = !activeVaultDetailSecret;
+    } else if (meta.kind === 'journal') {
+      const record = JSON.parse(decoder.decode(decrypted));
+      if (vaultDetailTitle) vaultDetailTitle.textContent = record.title || meta.displayName;
+      addDetailField(record.createdAt ? new Date(record.createdAt).toLocaleString('ko-KR') : '나만의 기록', record.body, { multiline: true });
+    } else if (meta.kind === 'memory') {
+      const media = document.createElement(item.type?.startsWith('video/') ? 'video' : 'img');
+      vaultDetailObjectUrl = URL.createObjectURL(new Blob([decrypted], { type: item.type }));
+      media.src = vaultDetailObjectUrl;
+      media.alt = meta.displayName;
+      if (media.tagName === 'VIDEO') media.controls = true;
+      vaultDetailBody?.append(media);
+      if (vaultDetailNotice) vaultDetailNotice.textContent = '이 항목에는 공유 동작이 없습니다. 접근 폐기는 별도 확인 후에만 가능합니다.';
+    }
+    if (vaultDetail) vaultDetail.hidden = false;
+    document.documentElement.classList.add('has-mobile-sheet');
+    setLocalizedText(fileStatus, '이 기기에서 복호화해 열었습니다', 'Decrypted on this device');
+  };
+
   const revokeVaultItem = async (id, row) => {
     const item = vaultItems.get(id);
     if (!item || item.isOwner === false) return;
+    const meta = vaultItemMeta(item.name);
+    const confirmed = window.confirm(
+      meta.kind === 'memory'
+        ? '잠긴 추억의 접근키를 영구 폐기할까요? 사진은 다시 열 수 없으며 이 작업은 되돌릴 수 없습니다.'
+        : '이 항목의 접근키를 영구 폐기할까요? 이 작업은 되돌릴 수 없습니다.',
+    );
+    if (!confirmed) return;
     if (item.remote) {
       setLocalizedText(fileStatus, '접근키 폐기 중', 'Revoking file key');
       await window.vaultIdentity.revokeVaultFile(id);
@@ -994,40 +1179,47 @@
     setLocalizedText(state, '접근키 폐기 / 접근 불가', 'Key revoked / inaccessible');
     setLocalizedText(fileStatus, '접근키 폐기 / 서버 암호문 유지', 'Key revoked / ciphertext retained');
     addAudit('FILE_KEY_REVOKED', 'DIGITAL VAULT');
+    updateVaultItemCount();
   };
 
   const appendVaultItem = (id, file, options = {}) => {
+    if (file.purpose === 'tessera-attachment') return;
     vaultList?.querySelector('.vault-list__empty')?.remove();
     const row = document.createElement('article');
     row.className = 'vault-item';
+    const meta = vaultItemMeta(file.name);
+    row.dataset.vaultKind = meta.kind;
 
     const info = document.createElement('div');
+    const icon = document.createElement('i');
+    icon.className = 'vault-item__icon';
+    icon.textContent = meta.icon;
     const state = document.createElement('span');
     state.dataset.itemState = '';
     setLocalizedText(
       state,
       options.revoked
         ? '접근키 폐기 / 접근 불가'
-        : `${options.isOwner === false ? '받은 암호화 파일' : (options.remote ? '서버 암호문' : '암호화됨')} / ${formatSize(file.size)}`,
+        : `${options.isOwner === false ? '대화로 받은 파일 · 개인 보관 전' : '안전하게 보관됨'} · ${meta.label} · ${formatSize(file.size)}`,
       options.revoked
         ? 'Key revoked / inaccessible'
         : `${options.isOwner === false ? 'Received encrypted file' : (options.remote ? 'Stored ciphertext' : 'Encrypted')} / ${formatSize(file.size)}`,
     );
     const name = document.createElement('strong');
-    name.textContent = file.name;
-    info.append(state, name);
+    name.textContent = meta.displayName;
+    info.append(icon, state, name);
 
     const actions = document.createElement('div');
     actions.className = 'vault-item__actions';
     const download = document.createElement('button');
     download.type = 'button';
-    download.dataset.ko = '복호화 다운로드';
-    download.dataset.en = 'Decrypt';
+    download.dataset.ko = meta.kind === 'file' ? '다운로드' : '안전하게 열기';
+    download.dataset.en = meta.kind === 'file' ? 'Download' : 'Open securely';
     download.textContent = pick(download.dataset.ko, download.dataset.en);
     download.disabled = Boolean(options.revoked);
     download.addEventListener('click', async () => {
       try {
-        await downloadVaultItem(id);
+        await openVaultItem(id);
       } catch (error) {
         setLocalizedText(
           fileStatus,
@@ -1038,7 +1230,7 @@
     });
     const revoke = document.createElement('button');
     revoke.type = 'button';
-    revoke.dataset.ko = '접근키 폐기';
+    revoke.dataset.ko = '접근 폐기';
     revoke.dataset.en = 'Revoke';
     revoke.textContent = pick(revoke.dataset.ko, revoke.dataset.en);
     revoke.disabled = Boolean(options.revoked);
@@ -1057,6 +1249,7 @@
     if (options.isOwner !== false) actions.appendChild(revoke);
     row.append(info, actions);
     vaultList?.prepend(row);
+    updateVaultItemCount();
   };
 
   const unwrapVaultFile = async (record) => {
@@ -1097,6 +1290,8 @@
       key,
       iv: base64ToBytes(record.file_iv),
       name: String(metadata.name || pick('암호화 파일', 'Encrypted file')),
+      purpose: metadata.purpose === 'tessera-attachment' ? 'tessera-attachment' : 'private',
+      sourceFileId: typeof metadata.sourceFileId === 'string' ? metadata.sourceFileId : null,
       type: String(metadata.type || 'application/octet-stream'),
       size: Number(metadata.size || Math.max(0, Number(record.ciphertext_bytes || 16) - 16)),
       objectPath: record.object_path,
@@ -1108,21 +1303,35 @@
     };
   };
 
-  const loadPersistentVaultFiles = async () => {
+  const loadPersistentVaultFiles = () => {
+    if (vaultLoadPromise) return vaultLoadPromise;
+    vaultLoadPromise = refreshPersistentVaultFiles().finally(() => { vaultLoadPromise = null; });
+    return vaultLoadPromise;
+  };
+
+  const refreshPersistentVaultFiles = async () => {
     if (activeIdentity?.mode !== 'SUPABASE') return;
+    const identity = activeIdentity;
     setLocalizedText(fileStatus, '서버 암호문 목록 동기화 중', 'Syncing stored ciphertext');
     const records = await window.vaultIdentity.listVaultFiles(
       activeIdentity.organization.id,
       activeIdentity.device.id,
     );
+    const items = [];
+    for (const record of [...records].reverse()) {
+      if (activeIdentity !== identity) throw new Error('Session changed');
+      const item = await unwrapVaultFile(record);
+      items.push(item);
+    }
+    if (activeIdentity !== identity) throw new Error('Session changed');
     vaultItems.clear();
     vaultList?.replaceChildren();
-    for (const record of [...records].reverse()) {
-      const item = await unwrapVaultFile(record);
+    for (const item of items) {
       vaultItems.set(item.id, item);
       appendVaultItem(item.id, item, { remote: true, revoked: item.revoked, isOwner: item.isOwner });
     }
-    if (!records.length && vaultList) {
+    updateVaultItemCount();
+    if (!items.some(item => item.purpose !== 'tessera-attachment') && vaultList) {
       const empty = document.createElement('p');
       empty.className = 'vault-list__empty';
       empty.textContent = pick('아직 보관된 암호화 파일이 없습니다.', 'No encrypted files are stored yet.');
@@ -1375,7 +1584,9 @@
   memberRefresh?.addEventListener('click', () => loadMembers(true));
   window.addEventListener('vault:languagechange', renderMembers);
 
-  const storeVaultFile = async (file, recipientDevices = []) => {
+  const storeVaultFile = async (file, recipientDevices = [], metadataExtras = {}) => {
+    const identity = activeIdentity;
+    const assertSession = () => { if (activeIdentity !== identity) throw new Error('Session changed'); };
     let uploadedObjectPath = '';
     let registered = false;
     let rawKey = null;
@@ -1395,6 +1606,7 @@
         name: file.name,
         type: file.type,
         size: file.size,
+        ...metadataExtras,
       };
 
       if (activeIdentity?.mode === 'SUPABASE') {
@@ -1402,6 +1614,7 @@
           name: file.name,
           type: file.type || 'application/octet-stream',
           size: file.size,
+          ...metadataExtras,
         }));
         const encryptedMetadata = await encryptBytes(key, metadata);
         rawKey = new Uint8Array(await window.crypto.subtle.exportKey('raw', key));
@@ -1409,10 +1622,12 @@
         const wrappedKey = await encryptBytes(wrappingKey, rawKey);
         uploadedObjectPath = `${activeIdentity.organization.id}/${activeIdentity.userId}/${id}.vault`;
         const ciphertextSha256 = await digestBase64(encrypted.cipher);
+        assertSession();
         await window.vaultIdentity.uploadVaultObject(
           uploadedObjectPath,
           new Blob([encrypted.cipher], { type: 'application/octet-stream' }),
         );
+        assertSession();
         await window.vaultIdentity.registerVaultFile({
           requested_file_id: id,
           requested_organization_id: activeIdentity.organization.id,
@@ -1477,8 +1692,40 @@
     }
   };
 
+  const saveAttachmentToVault = (sourceId) => {
+    if (savingAttachments.has(sourceId)) return savingAttachments.get(sourceId);
+    const operation = (async () => {
+      const identity = activeIdentity;
+      if (identity?.mode !== 'SUPABASE') throw new Error('Sign in required');
+      await loadPersistentVaultFiles();
+      if (activeIdentity !== identity) throw new Error('Session changed');
+      const source = vaultItems.get(sourceId);
+      if (!source?.key || source.revoked) throw new Error('Attachment is unavailable');
+      const existing = savedAttachment(source, sourceId);
+      if (existing) return existing;
+      const bytes = await readVaultItemBytes(source);
+      if (bytes.byteLength > 10 * 1024 * 1024) throw new Error('File exceeds 10 MB');
+      if (activeIdentity !== identity) throw new Error('Session changed');
+      // A new ID, content key and owner envelope; never inherit recipient shares.
+      const file = new File([bytes], source.name, { type: source.type });
+      const { id, item } = await storeVaultFile(file, [], { purpose: 'private', sourceFileId: sourceId });
+      if (activeIdentity !== identity) throw new Error('Session changed');
+      vaultItems.set(id, item);
+      appendVaultItem(id, item, { remote: true, isOwner: true });
+      addAudit('FILE_SAVED_FROM_CHAT', 'DIGITAL VAULT');
+      return id;
+    })();
+    savingAttachments.set(sourceId, operation);
+    operation.finally(() => savingAttachments.delete(sourceId)).catch(() => {});
+    return operation;
+  };
+
   const handleVaultFile = async (file) => {
     if (!file) return;
+    if (activeIdentity?.mode === 'UX PREVIEW') {
+      setLocalizedText(fileStatus, '미리보기에서는 실제 파일을 저장하지 않습니다', 'Files are not stored in visual preview');
+      return;
+    }
     if (file.size > 10 * 1024 * 1024) {
       setLocalizedText(fileStatus, '파일이 10MB를 초과합니다', 'File exceeds 10 MB');
       return;
@@ -1514,9 +1761,18 @@
 
   [mobileFileInput, mobileMediaInput, mobileCameraInput].forEach((input) => {
     input?.addEventListener('change', async () => {
-      const [file] = input.files || [];
+      const [selectedFile] = input.files || [];
+      const file = selectedFile && pendingVaultKind === 'memory'
+        ? new File(
+          [selectedFile],
+          `${vaultKinds.memory.prefix}${selectedFile.name}`,
+          { type: selectedFile.type, lastModified: selectedFile.lastModified },
+        )
+        : selectedFile;
       if (vaultActions) vaultActions.hidden = true;
+      document.documentElement.classList.remove('has-mobile-sheet');
       await handleVaultFile(file);
+      pendingVaultKind = 'file';
       input.value = '';
     });
   });
@@ -1527,41 +1783,119 @@
     document.documentElement.classList.add('has-mobile-sheet');
   });
 
-  document.querySelectorAll('[data-vault-action]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const action = button.dataset.vaultAction;
-      if (action === 'text') {
-        document.querySelector('.mobile-action-list')?.setAttribute('hidden', '');
-        if (vaultTextForm) vaultTextForm.hidden = false;
-        vaultTextForm?.querySelector('textarea')?.focus();
-        return;
-      }
-      const input = action === 'media'
-        ? mobileMediaInput
-        : (action === 'camera' ? mobileCameraInput : mobileFileInput);
-      input?.click();
+  const resetVaultForms = () => {
+    [vaultPasswordForm, vaultJournalForm].forEach((form) => {
+      form?.reset();
+      if (form) form.hidden = true;
     });
-  });
-
-  const resetVaultTextForm = () => {
-    vaultTextForm?.reset();
-    if (vaultTextForm) vaultTextForm.hidden = true;
     document.querySelector('.mobile-action-list')?.removeAttribute('hidden');
   };
 
-  vaultTextCancel?.addEventListener('click', resetVaultTextForm);
+  const openVaultService = (action) => {
+    pendingVaultKind = action;
+    if (action === 'password' || action === 'journal') {
+      document.querySelector('.mobile-action-list')?.setAttribute('hidden', '');
+      const form = action === 'password' ? vaultPasswordForm : vaultJournalForm;
+      if (form) form.hidden = false;
+      form?.querySelector('input, textarea')?.focus();
+      return;
+    }
+    const input = action === 'memory' ? mobileMediaInput : mobileFileInput;
+    input?.click();
+  };
 
-  vaultTextForm?.addEventListener('submit', async (event) => {
+  document.querySelectorAll('[data-vault-action]').forEach((button) => {
+    button.addEventListener('click', () => openVaultService(button.dataset.vaultAction));
+  });
+
+  document.querySelectorAll('[data-vault-service]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!fileInput || fileInput.disabled) return;
+      if (vaultActions) vaultActions.hidden = false;
+      document.documentElement.classList.add('has-mobile-sheet');
+      resetVaultForms();
+      openVaultService(button.dataset.vaultService);
+    });
+  });
+
+  document.querySelectorAll('[data-vault-form-cancel]').forEach((button) => {
+    button.addEventListener('click', resetVaultForms);
+  });
+
+  passwordGenerate?.addEventListener('click', () => {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    const bytes = window.crypto.getRandomValues(new Uint8Array(20));
+    const password = [...bytes].map((byte) => alphabet[byte % alphabet.length]).join('');
+    const target = vaultPasswordForm?.elements.password;
+    if (target) target.value = password;
+  });
+
+  vaultPasswordForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const note = String(new FormData(vaultTextForm).get('note') || '').trim();
-    if (!note) return;
-    const stamp = new Intl.DateTimeFormat('ko-KR', {
-      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
-    }).format(new Date()).replace(/[. :]/g, '-').replace(/-+/g, '-');
-    const file = new File([note], `보안-메모-${stamp}.txt`, { type: 'text/plain;charset=utf-8' });
-    resetVaultTextForm();
+    const data = new FormData(vaultPasswordForm);
+    const record = {
+      version: 1,
+      service: String(data.get('service') || '').trim(),
+      account: String(data.get('account') || '').trim(),
+      password: String(data.get('password') || ''),
+      note: String(data.get('note') || '').trim(),
+      createdAt: new Date().toISOString(),
+    };
+    if (!record.service || !record.password) return;
+    const safeName = record.service.replace(/[\\/:*?"<>|]/g, '-').slice(0, 60);
+    const file = new File(
+      [JSON.stringify(record)],
+      `${vaultKinds.password.prefix}${safeName}`,
+      { type: 'application/vnd.the-vault.password+json' },
+    );
+    resetVaultForms();
     if (vaultActions) vaultActions.hidden = true;
+    document.documentElement.classList.remove('has-mobile-sheet');
     await handleVaultFile(file);
+  });
+
+  vaultJournalForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(vaultJournalForm);
+    const record = {
+      version: 1,
+      title: String(data.get('title') || '').trim(),
+      body: String(data.get('body') || '').trim(),
+      createdAt: new Date().toISOString(),
+    };
+    if (!record.title || !record.body) return;
+    const safeName = record.title.replace(/[\\/:*?"<>|]/g, '-').slice(0, 60);
+    const file = new File(
+      [JSON.stringify(record)],
+      `${vaultKinds.journal.prefix}${safeName}`,
+      { type: 'application/vnd.the-vault.journal+json' },
+    );
+    resetVaultForms();
+    if (vaultActions) vaultActions.hidden = true;
+    document.documentElement.classList.remove('has-mobile-sheet');
+    await handleVaultFile(file);
+  });
+
+  vaultDetailCopy?.addEventListener('click', async () => {
+    if (!activeVaultDetailSecret) return;
+    try {
+      await navigator.clipboard.writeText(activeVaultDetailSecret);
+      if (vaultDetailNotice) vaultDetailNotice.textContent = '비밀번호를 복사했습니다. 사용 후 클립보드를 다른 내용으로 덮어쓰세요.';
+    } catch {
+      if (vaultDetailNotice) vaultDetailNotice.textContent = '복사 권한이 없어 비밀번호를 복사하지 못했습니다.';
+    }
+  });
+
+  vaultDetailDownload?.addEventListener('click', () => {
+    if (activeVaultDetailId) void downloadVaultItem(activeVaultDetailId);
+  });
+
+  window.addEventListener('vault:sheetclosed', () => {
+    activeVaultDetailId = null;
+    activeVaultDetailSecret = '';
+    if (vaultDetailObjectUrl) URL.revokeObjectURL(vaultDetailObjectUrl);
+    vaultDetailObjectUrl = '';
+    vaultDetailBody?.replaceChildren();
   });
 
   messageFileTrigger?.addEventListener('click', () => {
@@ -1586,9 +1920,9 @@
       if (activeIdentity?.mode !== 'SUPABASE') throw new Error('파일 공유는 서버 인증 모드에서 사용할 수 있습니다.');
       const recipientDevices = activeRecipientDevices();
       if (!recipientDevices.length) throw new Error('상대방의 활성 기기가 없습니다.');
-      const { id, item, encrypted } = await storeVaultFile(file, recipientDevices);
+      const { id, item, encrypted } = await storeVaultFile(file, recipientDevices, { purpose: 'tessera-attachment' });
       vaultItems.set(id, item);
-      appendVaultItem(id, file, { remote: true, isOwner: true });
+      appendVaultItem(id, item, { remote: true, isOwner: true });
       renderPayload(fileOutput, encrypted.payload);
       const reference = encoder.encode(JSON.stringify({
         v: 1,
@@ -1623,6 +1957,28 @@
   });
 
   const initialize = async (identity) => {
+    if (identity.mode === 'UX PREVIEW') {
+      activeIdentity = identity;
+      if (mobileIdentity) mobileIdentity.textContent = '@preview-vault';
+      if (mobileDevice) mobileDevice.textContent = '시각 미리보기 · 저장 안 함';
+      if (deviceId) deviceId.textContent = 'PREVIEW / VISUAL:DEMO';
+      setLocalizedText(keyState, '시각 미리보기 / 서버 연결 없음', 'Visual preview / No server connection');
+      setLocalizedText(fileStatus, '화면 비교용 · 실제 저장 안 함', 'Visual demo · Nothing is stored');
+      fileInput?.removeAttribute('disabled');
+      renderSelfProfile();
+      showView(window.location.hash.slice(1) || 'archive');
+      if (new URLSearchParams(window.location.search).get('conversation') === '1') {
+        // Visual-only fixtures: no recipient, server request or stored message.
+        tesseraShell?.classList.add('has-conversation');
+        contactName.textContent = '하늘 · 미리보기';
+        contactMeta.textContent = '화면 확인용 대화 · 실제 전송 안 함';
+        messageStream.replaceChildren();
+        appendMessage('안녕하세요! 새 대화창은 어떤가요?', { mine: false, sender: '하늘' });
+        appendMessage('별명과 말풍선이 나뉘어서 훨씬 편하게 읽혀요.\n여러 줄 메시지도 확인해볼게요.', { sender: '나', readAt: new Date().toISOString() });
+        appendMessage('좋아요. 긴 주소도 화면 밖으로 나가지 않아야 해요.\nhttps://example.com/a-very-long-message-link-for-mobile-layout-check', { mine: false, sender: '하늘' });
+      }
+      return;
+    }
     if (!window.crypto?.subtle) {
       setLocalizedText(keyState, 'Web Crypto를 사용할 수 없음', 'Web Crypto unavailable');
       messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
@@ -1656,12 +2012,13 @@
       if (messageNetwork) messageNetwork.textContent = 'CONNECTING';
       startTesseraSubscription();
       await loadTesseraContacts();
+      startFallbackSync();
       try {
         await loadPersistentVaultFiles();
       } catch (error) {
         setLocalizedText(
           fileStatus,
-          `디지털 볼트 서버 준비 필요: ${messageErrorText(error)}`,
+          `디지털 금고 서버 준비 필요: ${messageErrorText(error)}`,
           `Digital Vault backend required: ${messageErrorText(error)}`,
         );
       }
@@ -1700,7 +2057,12 @@
   }), { once: true });
 
   window.addEventListener('vault:identity-conflict', () => {
+    attachmentUI.clear();
+    activeIdentity = null;
+    conversationSummaries.clear();
+    window.vaultNotifications?.setUnread(0);
     unsubscribeMessages?.();
+    if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
     messageForm?.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
     messageFileTrigger?.setAttribute('disabled', '');
     if (messageNetwork) messageNetwork.textContent = 'SESSION CONFLICT';
@@ -1711,5 +2073,14 @@
     );
   });
 
-  window.addEventListener('beforeunload', () => unsubscribeMessages?.());
+  window.addEventListener('beforeunload', () => {
+    attachmentUI.clear();
+    unsubscribeMessages?.();
+    if (fallbackSyncTimer) window.clearInterval(fallbackSyncTimer);
+  });
+  window.addEventListener('pagehide', () => attachmentUI.clear());
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted && activeIdentity?.mode === 'SUPABASE') void loadConversation();
+  });
+  document.querySelector('[data-sign-out]')?.addEventListener('click', () => attachmentUI.clear());
 })();

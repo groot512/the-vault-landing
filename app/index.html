@@ -23,26 +23,28 @@
       crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     >
-    <link rel="stylesheet" href="app.css?v=260901-5">
-    <link rel="stylesheet" href="../navigation.css?v=260815-1">
-    <script src="../i18n.js?v=260901-3" defer></script>
+    <link rel="stylesheet" href="app.css?v=260903-6">
+    <link rel="stylesheet" href="../navigation.css?v=260903-1">
+    <script src="../i18n.js?v=260903-2" defer></script>
     <script src="config.js?v=260831-2" defer></script>
     <script src="recovery.js?v=260820-1" defer></script>
-    <script src="identity.js?v=260901-7" defer></script>
-    <script src="app.js?v=260901-7" defer></script>
+    <script src="notifications.js?v=260903-1" defer></script>
+    <script src="identity.js?v=260903-4" defer></script>
+    <script src="attachments.js?v=260903-1" defer></script>
+    <script src="app.js?v=260903-5" defer></script>
     <script src="../navigation.js?v=260815-1" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#workspace">작업영역으로 건너뛰기</a>
 
-    <header class="global-nav" data-global-nav>
-      <a class="global-nav__brand" href="../"><strong>더 볼트</strong><span>/</span><strong>트러스트 랩</strong></a>
+    <header class="global-nav global-nav--app" data-global-nav>
+      <a class="global-nav__brand" href="https://thevault73.com/" aria-label="더 볼트 브랜드 홈페이지"><strong>더 볼트</strong><span>/</span><strong data-ko="보안 앱" data-en="SECURE APP">보안 앱</strong></a>
       <button class="global-nav__toggle" type="button" aria-expanded="false" aria-controls="global-menu" data-global-nav-toggle><span class="global-nav__toggle-open">메뉴</span><span class="global-nav__toggle-close">닫기</span></button>
-      <nav class="global-nav__menu" id="global-menu" aria-label="더 볼트 전체 메뉴">
-        <div class="global-nav__item"><a class="global-nav__link" href="../#philosophy">철학</a></div><div class="global-nav__item"><a class="global-nav__link" href="../#vision">비전</a></div><div class="global-nav__item"><a class="global-nav__link" href="../#approach">접근 방식</a></div>
-        <div class="global-nav__item"><a class="global-nav__trigger" href="../tessera/">테세라 ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-tessera" data-submenu-toggle><span class="sr-only">테세라 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-tessera"><a href="../tessera/"><span>00</span>개요</a><a href="../tessera/#proof"><span>01</span>기술 증명</a><a href="../tessera/#architecture"><span>02</span>구조</a><a href="../tessera/#status"><span>03</span>개발 현황</a></div></div>
-        <div class="global-nav__item"><a class="global-nav__trigger" href="../digital-vault/">디지털 볼트 ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-digital" data-submenu-toggle><span class="sr-only">디지털 볼트 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-digital"><a href="../digital-vault/"><span>00</span>개요</a><a href="../digital-vault/#proof"><span>01</span>기술 증명</a><a href="../digital-vault/#architecture"><span>02</span>구조</a><a href="../digital-vault/#status"><span>03</span>개발 현황</a></div></div>
-        <div class="global-nav__item is-current"><a class="global-nav__trigger" href="./">트러스트 랩 ↗</a><button class="global-nav__submenu-toggle" type="button" aria-expanded="false" aria-controls="nav-lab" data-submenu-toggle><span class="sr-only">트러스트 랩 세부 메뉴</span></button><div class="global-nav__submenu" id="nav-lab"><a href="#signal"><span>01</span>테세라 증명</a><a href="#archive"><span>02</span>볼트 증명</a><a href="#audit"><span>03</span>감사 기록</a></div></div>
+      <nav class="global-nav__menu" id="global-menu" aria-label="더 볼트 앱 메뉴">
+        <div class="global-nav__item is-current"><a class="global-nav__link" href="./" data-ko="앱 로그인" data-en="App sign in">앱 로그인</a></div>
+        <div class="global-nav__item"><a class="global-nav__link" href="https://thevault73.com/" data-ko="더 볼트 소개 ↗" data-en="About THE VAULT ↗">더 볼트 소개 ↗</a></div>
+        <div class="global-nav__item"><a class="global-nav__link" href="https://thevault73.com/tessera/" data-ko="테세라 소개 ↗" data-en="About TESSERA ↗">테세라 소개 ↗</a></div>
+        <div class="global-nav__item"><a class="global-nav__link" href="https://thevault73.com/digital-vault/" data-ko="디지털 금고 소개 ↗" data-en="About DIGITAL VAULT ↗">디지털 금고 소개 ↗</a></div>
       </nav>
       <button class="global-nav__language" type="button" data-language-toggle aria-label="영어로 보기"><span data-language-current>KO</span><i aria-hidden="true">/</i><span data-language-next>EN</span></button>
     </header>
@@ -214,7 +216,7 @@
             </button>
             <button class="lab-nav" type="button" data-view-target="archive">
               <span>02</span>
-              <strong>디지털 볼트</strong>
+              <strong>디지털 금고</strong>
               <em>Secure Archive</em>
             </button>
             <button class="lab-nav" type="button" data-view-target="audit">
@@ -234,6 +236,7 @@
           <span data-identity-name>Identity pending</span>
           <strong data-identity-organization>—</strong>
           <em data-identity-role>—</em>
+          <button type="button" data-mobile-settings-open>알림 및 앱 설정</button>
           <button type="button" data-sign-out>End session</button>
         </div>
 
@@ -337,7 +340,9 @@
                 <div>
                   <span>종단간 암호화 · 평문 미저장</span>
                   <button class="composer__attachment" type="button" data-message-file-trigger disabled>파일 첨부</button>
-                  <button type="submit" disabled><span>보내기</span> <b aria-hidden="true">↑</b></button>
+                  <button class="composer__send" type="submit" disabled><span>보내기</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m21 3-6 18-4-8-8-4Z M11 13 21 3"/></svg>
+                  </button>
                 </div>
               </form>
             </div>
@@ -363,6 +368,23 @@
 
         <section class="lab-view" id="archive" data-view="archive" aria-labelledby="archive-title" hidden>
           <div class="view-main">
+            <section class="vault-mobile-home" aria-label="나의 디지털 금고">
+              <header>
+                <p>나만의 안전한 공간</p>
+                <h2>무엇을 <br>지켜드릴까요?</h2>
+                <span>내용은 이 기기에서 먼저 암호화됩니다.</span>
+              </header>
+              <div class="vault-mobile-summary">
+                <span>보관 중</span><strong data-vault-item-count>0</strong><small>개의 소중한 기록</small>
+              </div>
+              <nav class="vault-service-list" aria-label="디지털 금고 서비스">
+                <button type="button" data-vault-service="password"><span class="vault-service-icon">✦</span><span><strong>패스워드</strong><small>아이디와 비밀번호를 안전하게</small></span><b>›</b></button>
+                <button type="button" data-vault-service="journal"><span class="vault-service-icon">⌁</span><span><strong>내면 일기</strong><small>누구에게도 보여주지 않을 이야기</small></span><b>›</b></button>
+                <button type="button" data-vault-service="memory"><span class="vault-service-icon">◌</span><span><strong>잠긴 추억</strong><small>공유 없이 보관하고 실수로 지우지 않게</small></span><b>›</b></button>
+                <button type="button" data-vault-service="file"><span class="vault-service-icon">↑</span><span><strong>파일 보관</strong><small>문서와 모든 형식의 파일</small></span><b>›</b></button>
+              </nav>
+              <div class="vault-mobile-recent"><span>최근 보관함</span><small>모든 항목</small></div>
+            </section>
             <header class="view-title">
               <p>02 / Secure Archive</p>
               <h2 id="archive-title">Digital<br>Vault</h2>
@@ -380,7 +402,7 @@
               <p class="vault-list__empty">아직 암호화된 파일이 없습니다.</p>
             </div>
 
-            <button class="mobile-vault-add" type="button" data-vault-actions-open aria-label="디지털 볼트에 추가">
+            <button class="mobile-vault-add" type="button" data-vault-actions-open aria-label="디지털 금고에 추가">
               <span aria-hidden="true">＋</span>
             </button>
           </div>
@@ -508,16 +530,30 @@
 
       <nav class="mobile-tabbar" aria-label="더 볼트 앱 메뉴">
         <button class="is-active" type="button" data-view-target="signal">
-          <span class="mobile-tabbar__icon" aria-hidden="true">◫</span><strong>테세라</strong>
+          <svg class="mobile-tabbar__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M7 18 3 21V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3Z"/>
+            <path d="M7 8h10M7 12h6"/>
+          </svg><strong>테세라</strong>
         </button>
         <button type="button" data-view-target="archive">
-          <span class="mobile-tabbar__icon" aria-hidden="true">▱</span><strong>디지털 볼트</strong>
+          <svg class="mobile-tabbar__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="3" y="3" width="18" height="17" rx="3"/>
+            <circle cx="13" cy="11.5" r="3"/>
+            <path d="M13 8.5v6M10 11.5h6M6 8v7M6 20v1M18 20v1"/>
+          </svg><strong>금고</strong>
         </button>
         <button type="button" data-view-target="audit">
-          <span class="mobile-tabbar__icon" aria-hidden="true">≡</span><strong>기록</strong>
+          <svg class="mobile-tabbar__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M11 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-5M7 12h3M7 16h7"/>
+            <circle cx="17" cy="6" r="4"/>
+            <path d="M17 4v2l1.5 1"/>
+          </svg><strong>활동</strong>
         </button>
         <button type="button" data-mobile-settings-open>
-          <span class="mobile-tabbar__icon" aria-hidden="true">···</span><strong>설정</strong>
+          <svg class="mobile-tabbar__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="m9.5 3-.6 2.2-1.5.9-2.2-.6-2.5 4.3 1.6 1.6v1.8l-1.6 1.6 2.5 4.3 2.2-.6 1.5.9.6 2.2h5l.6-2.2 1.5-.9 2.2.6 2.5-4.3-1.6-1.6v-1.8l1.6-1.6-2.5-4.3-2.2.6-1.5-.9-.6-2.2Z"/>
+            <circle cx="12" cy="12.3" r="3"/>
+          </svg><strong>설정</strong>
         </button>
       </nav>
 
@@ -529,19 +565,43 @@
             <button type="button" data-sheet-close aria-label="닫기">×</button>
           </header>
           <div class="mobile-action-list">
-            <button type="button" data-vault-action="text"><span aria-hidden="true">T</span><strong>텍스트 보관</strong><small>메모와 복구 정보를 암호화합니다.</small></button>
-            <button type="button" data-vault-action="file"><span aria-hidden="true">↑</span><strong>파일 올리기</strong><small>문서와 모든 일반 파일을 선택합니다.</small></button>
-            <button type="button" data-vault-action="media"><span aria-hidden="true">□</span><strong>사진·영상 선택</strong><small>기기의 사진 보관함을 엽니다.</small></button>
-            <button type="button" data-vault-action="camera"><span aria-hidden="true">○</span><strong>카메라로 촬영</strong><small>촬영 즉시 암호화해 보관합니다.</small></button>
+            <button type="button" data-vault-action="password"><span aria-hidden="true">✦</span><strong>패스워드</strong><small>로그인 정보를 하나의 암호화 항목으로 보관합니다.</small></button>
+            <button type="button" data-vault-action="journal"><span aria-hidden="true">⌁</span><strong>내면 일기</strong><small>마음속 이야기를 나만 읽을 수 있게 기록합니다.</small></button>
+            <button type="button" data-vault-action="memory"><span aria-hidden="true">◌</span><strong>잠긴 추억</strong><small>공유 메뉴 없이 사진과 영상을 보호합니다.</small></button>
+            <button type="button" data-vault-action="file"><span aria-hidden="true">↑</span><strong>일반 파일</strong><small>문서와 모든 형식의 파일을 선택합니다.</small></button>
           </div>
-          <form class="mobile-text-vault" data-vault-text-form hidden>
-            <label for="vault-text-note">보관할 텍스트</label>
-            <textarea id="vault-text-note" name="note" rows="7" maxlength="20000" placeholder="이 기기에서 암호화할 내용을 입력하세요." required></textarea>
-            <div><button type="button" data-vault-text-cancel>취소</button><button type="submit">암호화해 보관</button></div>
+          <form class="mobile-vault-form" data-vault-password-form hidden>
+            <label>서비스 이름<input name="service" maxlength="80" placeholder="예: 넷플릭스" required></label>
+            <label>아이디<input name="account" maxlength="200" autocomplete="off" placeholder="로그인 아이디"></label>
+            <label>비밀번호<span class="vault-password-field"><input name="password" maxlength="500" autocomplete="new-password" required><button type="button" data-password-generate>안전하게 생성</button></span></label>
+            <label>메모<textarea name="note" rows="3" maxlength="2000" placeholder="복구 정보나 기억할 내용"></textarea></label>
+            <div><button type="button" data-vault-form-cancel>취소</button><button type="submit">암호화해 보관</button></div>
+          </form>
+          <form class="mobile-vault-form" data-vault-journal-form hidden>
+            <label>오늘의 제목<input name="title" maxlength="100" placeholder="지금 마음에 떠오르는 말" required></label>
+            <label>나만의 기록<textarea name="body" rows="9" maxlength="30000" placeholder="판단하지 않고, 있는 그대로 적어보세요." required></textarea></label>
+            <p>일기 제목과 내용도 파일 본문과 함께 암호화되어 저장됩니다.</p>
+            <div><button type="button" data-vault-form-cancel>취소</button><button type="submit">오늘의 기록 잠그기</button></div>
           </form>
           <input type="file" data-mobile-file-input hidden>
           <input type="file" accept="image/*,video/*" data-mobile-media-input hidden>
           <input type="file" accept="image/*" capture="environment" data-mobile-camera-input hidden>
+        </section>
+      </div>
+
+      <div class="mobile-sheet" data-vault-detail hidden>
+        <button class="mobile-sheet__backdrop" type="button" data-sheet-close aria-label="보관 항목 닫기"></button>
+        <section class="mobile-sheet__panel vault-detail" role="dialog" aria-modal="true" aria-labelledby="vault-detail-title">
+          <header>
+            <div><span data-vault-detail-kind>PRIVATE ITEM</span><h2 id="vault-detail-title" data-vault-detail-title>보관 항목</h2></div>
+            <button type="button" data-sheet-close aria-label="닫기">×</button>
+          </header>
+          <div class="vault-detail__body" data-vault-detail-body></div>
+          <div class="vault-detail__actions">
+            <button type="button" data-vault-detail-copy hidden>비밀번호 복사</button>
+            <button type="button" data-vault-detail-download>원본 다운로드</button>
+          </div>
+          <p class="vault-detail__notice" data-vault-detail-notice></p>
         </section>
       </div>
 
@@ -557,9 +617,12 @@
             <div><dt>이 기기</dt><dd data-mobile-device>등록 확인 중</dd></div>
           </dl>
           <div class="mobile-settings__actions">
+            <button type="button" data-push-toggle disabled><span><strong data-push-label>새 메시지 알림 받기</strong><small data-push-status>로그인 후 이 기기의 알림을 설정할 수 있습니다.</small></span><b aria-hidden="true">↗</b></button>
+            <p class="push-privacy-note">알림에는 보낸 사람·대화 내용·파일명을 표시하지 않습니다. 기기와 브라우저 설정에 따라 소리와 아이콘 표시가 달라질 수 있습니다.</p>
             <button type="button" data-install-app><span><strong>홈 화면에 설치</strong><small data-install-status>설치 가능 여부를 확인하고 있습니다.</small></span><b>↗</b></button>
             <button type="button" data-passkey-register><span><strong>지문·Face ID 연결</strong><small data-passkey-status>기기 지원 여부를 확인하고 있습니다.</small></span><b>↗</b></button>
             <button type="button" data-mobile-admin hidden><span><strong>구성원 및 계정 관리</strong><small>관리자 전용 접근 설정</small></span><b>↗</b></button>
+            <a href="https://thevault73.com/"><span><strong>더 볼트 브랜드 웹사이트</strong><small>철학·비전·서비스 소개 보기</small></span><b>↗</b></a>
           </div>
           <p class="mobile-settings__note">생체정보는 더 볼트나 서버로 전송되지 않습니다. 기기의 패스키가 로그인 서명을 승인합니다. 중요한 작업은 현재 TOTP 2단계 인증을 유지합니다.</p>
           <button class="mobile-settings__signout" type="button" data-mobile-sign-out>이 기기에서 로그아웃</button>
@@ -567,6 +630,6 @@
         </section>
       </div>
     </main>
-    <script src="pwa.js?v=260901-1" defer></script>
+    <script src="pwa.js?v=260903-1" defer></script>
   </body>
 </html>

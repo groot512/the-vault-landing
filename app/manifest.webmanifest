@@ -2,7 +2,7 @@
   "id": "./",
   "name": "THE VAULT",
   "short_name": "THE VAULT",
-  "description": "테세라 보안메신저와 디지털 볼트를 하나의 기기 보안 경계에서 사용합니다.",
+  "description": "테세라 보안메신저와 디지털 금고를 하나의 기기 보안 경계에서 사용합니다.",
   "lang": "ko",
   "start_url": "./#signal",
   "scope": "./",
@@ -33,8 +33,8 @@
       "icons": [{ "src": "icons/vault-icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "디지털 볼트",
-      "short_name": "볼트",
+      "name": "디지털 금고",
+      "short_name": "금고",
       "url": "./#archive",
       "icons": [{ "src": "icons/vault-icon-192.png", "sizes": "192x192" }]
     }
